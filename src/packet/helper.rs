@@ -16,6 +16,49 @@ pub async fn disconnect_and_broadcast(
     }
 }
 
+pub async fn connect_and_broadcast(
+    channel_manager: &ChannelManager,
+    room_id: Uuid,
+    client_id: Uuid,
+) {
+
+    let connect_packet = WsPacket::ClientConnected { client_id };
+    Box::pin(broadcast_to_room(channel_manager, room_id, &connect_packet, Some(client_id))).await;
+
+
+    sync_existing_clients(channel_manager, room_id, client_id).await;
+}
+
+pub async fn sync_existing_clients(
+    channel_manager: &ChannelManager,
+    room_id: Uuid,
+    new_client_id: Uuid,
+) {
+    let clients = match channel_manager.get_clients(room_id) {
+        Ok(clients) => clients,
+        Err(_) => return,
+    };
+
+    let mut new_client = match channel_manager.get_client(room_id, new_client_id) {
+        Ok(Some(client)) => client,
+        _ => return,
+    };
+
+    for existing_client in clients {
+        if existing_client.id != new_client_id {
+            let packet = WsPacket::ClientConnected {
+                client_id: existing_client.id
+            };
+
+            if let Err(e) = new_client.session.binary(packet.to_bytes()).await {
+                warn!("Failed to sync with new client {}: {}", new_client_id, e);
+                Box::pin(disconnect_and_broadcast(channel_manager, room_id, new_client_id)).await;
+                break;
+            }
+        }
+    }
+}
+
 pub async fn broadcast_to_room(
     channel_manager: &ChannelManager,
     room_id: Uuid,

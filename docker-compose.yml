@@ -1,0 +1,15 @@
+services:
+  daiana:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: daiana
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8080
+      - MAX_CLIENTS_ON_CHANNEL=5
+      - CHANNEL_TIMEOUT=30
+      - RUST_LOG=info

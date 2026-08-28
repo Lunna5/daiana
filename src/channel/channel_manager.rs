@@ -76,6 +76,10 @@ impl ChannelManager {
                 return Err(DaianaError::MaximumClientsReached);
             }
 
+            if channel.time_without_clients != 0 {
+                channel.time_without_clients = 0;
+            }
+
             channel.clients.push(client);
             Ok(())
         } else {
@@ -98,10 +102,37 @@ impl ChannelManager {
 
         if let Some(channel) = channels.get_mut(&channel_id) {
             channel.clients.retain(|client| client.id != client_id);
+
+            if channel.clients.is_empty() {
+                channel.time_without_clients = get_current_time_in_seconds();
+            }
             Ok(())
         } else {
             Err(DaianaError::InvalidRoomId)
         }
+    }
+
+    pub fn clean_empty_channels(&self, timeout_seconds: u64) {
+        let mut channels = self.channels.lock().expect("Unable to lock channel");
+        let current_time = get_current_time_in_seconds();
+
+        channels.retain(|_id, channel| {
+            if !channel.clients.is_empty() {
+                return true;
+            }
+
+            let time_empty = current_time.saturating_sub(channel.time_without_clients);
+
+            let keep = time_empty < timeout_seconds;
+            if !keep {
+                log::debug!(
+                    "Removing empty channel {} after {} seconds of inactivity",
+                    channel.id,
+                    time_empty
+                );
+            }
+            keep
+        });
     }
 
     pub fn get_client(
@@ -136,6 +167,8 @@ impl ChannelManager {
 
         if let Some(channel) = channels.get_mut(&channel_id) {
             channel.clients.clear();
+            channel.time_without_clients = get_current_time_in_seconds();
+
             Ok(())
         } else {
             Err(DaianaError::InvalidRoomId)

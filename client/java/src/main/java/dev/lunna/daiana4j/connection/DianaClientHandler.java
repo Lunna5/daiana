@@ -7,18 +7,22 @@ import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.websocketx.WebSocketClientProtocolHandler;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
-public class DianaClientHandler extends SimpleChannelInboundHandler<WsInPacket> {
+public final class DianaClientHandler extends SimpleChannelInboundHandler<WsInPacket> {
     private final List<DaianaListener> listeners;
+    private final CompletableFuture<Void> handshakeFuture;
 
-    public DianaClientHandler(List<DaianaListener> listeners) {
+    public DianaClientHandler(List<DaianaListener> listeners, CompletableFuture<Void> handshakeFuture) {
         this.listeners = listeners;
+        this.handshakeFuture = handshakeFuture;
     }
 
     @Override
     public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
         if (evt instanceof WebSocketClientProtocolHandler.ClientHandshakeStateEvent event) {
             if (event == WebSocketClientProtocolHandler.ClientHandshakeStateEvent.HANDSHAKE_COMPLETE) {
+                handshakeFuture.complete(null);
                 for (DaianaListener listener : listeners) {
                     listener.onConnected();
                 }
@@ -70,6 +74,10 @@ public class DianaClientHandler extends SimpleChannelInboundHandler<WsInPacket> 
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
         for (DaianaListener listener : listeners) {
             listener.onError(cause);
+        }
+
+        if (!handshakeFuture.isDone()) {
+            handshakeFuture.completeExceptionally(cause);
         }
 
         super.exceptionCaught(ctx, cause);

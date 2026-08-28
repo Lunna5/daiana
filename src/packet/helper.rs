@@ -1,8 +1,8 @@
-use futures_util::future::join_all;
 use crate::channel::ChannelManager;
-use uuid::Uuid;
-use log::warn;
 use crate::packet::out::WsPacket;
+use futures_util::future::join_all;
+use log::warn;
+use uuid::Uuid;
 
 pub async fn disconnect_and_broadcast(
     channel_manager: &ChannelManager,
@@ -12,7 +12,13 @@ pub async fn disconnect_and_broadcast(
     if let Ok(true) = channel_manager.client_exists(room_id, client_id) {
         let _ = channel_manager.remove_client(room_id, client_id);
         let disconnect_packet = WsPacket::ClientDisconnected { client_id };
-        Box::pin(broadcast_to_room(channel_manager, room_id, &disconnect_packet, None)).await;
+        Box::pin(broadcast_to_room(
+            channel_manager,
+            room_id,
+            &disconnect_packet,
+            None,
+        ))
+        .await;
     }
 }
 
@@ -21,10 +27,14 @@ pub async fn connect_and_broadcast(
     room_id: Uuid,
     client_id: Uuid,
 ) {
-
     let connect_packet = WsPacket::ClientConnected { client_id };
-    Box::pin(broadcast_to_room(channel_manager, room_id, &connect_packet, Some(client_id))).await;
-
+    Box::pin(broadcast_to_room(
+        channel_manager,
+        room_id,
+        &connect_packet,
+        Some(client_id),
+    ))
+    .await;
 
     sync_existing_clients(channel_manager, room_id, client_id).await;
 }
@@ -47,12 +57,17 @@ pub async fn sync_existing_clients(
     for existing_client in clients {
         if existing_client.id != new_client_id {
             let packet = WsPacket::ClientConnected {
-                client_id: existing_client.id
+                client_id: existing_client.id,
             };
 
             if let Err(e) = new_client.session.binary(packet.to_bytes()).await {
                 warn!("Failed to sync with new client {}: {}", new_client_id, e);
-                Box::pin(disconnect_and_broadcast(channel_manager, room_id, new_client_id)).await;
+                Box::pin(disconnect_and_broadcast(
+                    channel_manager,
+                    room_id,
+                    new_client_id,
+                ))
+                .await;
                 break;
             }
         }
@@ -97,7 +112,12 @@ pub async fn broadcast_to_room(
     let failed_clients = join_all(send_tasks).await;
 
     for failed_id in failed_clients.into_iter().flatten() {
-        Box::pin(disconnect_and_broadcast(channel_manager, room_id, failed_id)).await;
+        Box::pin(disconnect_and_broadcast(
+            channel_manager,
+            room_id,
+            failed_id,
+        ))
+        .await;
     }
 }
 
@@ -110,11 +130,15 @@ pub async fn send_to_client(
     let bytes = packet.to_bytes();
 
     if let Ok(Some(mut client)) = channel_manager.get_client(room_id, target_client_id)
-        && let Err(e) = client.session.binary(bytes).await {
-            warn!("Failed to send direct message to {}: {}", target_client_id, e);
+        && let Err(e) = client.session.binary(bytes).await
+    {
+        warn!(
+            "Failed to send direct message to {}: {}",
+            target_client_id, e
+        );
 
-            disconnect_and_broadcast(channel_manager, room_id, target_client_id).await;
-        }
+        disconnect_and_broadcast(channel_manager, room_id, target_client_id).await;
+    }
 }
 
 pub async fn send_server_info_to_room(
@@ -187,6 +211,11 @@ pub async fn multicast_to_clients(
     let failed_clients = join_all(send_tasks).await;
 
     for failed_id in failed_clients.into_iter().flatten() {
-        Box::pin(disconnect_and_broadcast(channel_manager, room_id, failed_id)).await;
+        Box::pin(disconnect_and_broadcast(
+            channel_manager,
+            room_id,
+            failed_id,
+        ))
+        .await;
     }
 }

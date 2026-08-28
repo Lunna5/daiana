@@ -1,11 +1,11 @@
-use std::env;
-use actix_web::{App, HttpServer, web};
 use actix_web::middleware::{Compress, Logger, NormalizePath, TrailingSlash};
 use actix_web::web::Data;
-use daiana::util::pretty_logger;
-use log::{debug, info};
-use daiana::{service, AppState};
+use actix_web::{App, HttpServer, web};
 use daiana::channel::ChannelManager;
+use daiana::util::pretty_logger;
+use daiana::{AppState, service};
+use log::{debug, info};
+use std::env;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {

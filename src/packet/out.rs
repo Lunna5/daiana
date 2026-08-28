@@ -15,19 +15,10 @@ pub enum ParseError {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum WsPacket {
-    ClientConnected {
-        client_id: Uuid,
-    },
-    ClientDisconnected {
-        client_id: Uuid,
-    },
-    Message {
-        sender_id: Uuid,
-        payload: Bytes,
-    },
-    ServerInfo {
-        message: String,
-    },
+    ClientConnected { client_id: Uuid },
+    ClientDisconnected { client_id: Uuid },
+    Message { sender_id: Uuid, payload: Bytes },
+    ServerInfo { message: String },
 }
 
 impl WsPacket {
@@ -71,19 +62,29 @@ impl WsPacket {
 
         match opcode {
             OP_CONNECTED => {
-                if data.remaining() < 16 { return Err(ParseError::IncompleteData); }
+                if data.remaining() < 16 {
+                    return Err(ParseError::IncompleteData);
+                }
                 let mut uuid_bytes = [0u8; 16];
                 data.copy_to_slice(&mut uuid_bytes);
-                Ok(WsPacket::ClientConnected { client_id: Uuid::from_bytes(uuid_bytes) })
+                Ok(WsPacket::ClientConnected {
+                    client_id: Uuid::from_bytes(uuid_bytes),
+                })
             }
             OP_DISCONNECTED => {
-                if data.remaining() < 16 { return Err(ParseError::IncompleteData); }
+                if data.remaining() < 16 {
+                    return Err(ParseError::IncompleteData);
+                }
                 let mut uuid_bytes = [0u8; 16];
                 data.copy_to_slice(&mut uuid_bytes);
-                Ok(WsPacket::ClientDisconnected { client_id: Uuid::from_bytes(uuid_bytes) })
+                Ok(WsPacket::ClientDisconnected {
+                    client_id: Uuid::from_bytes(uuid_bytes),
+                })
             }
             OP_MESSAGE => {
-                if data.remaining() < 16 { return Err(ParseError::IncompleteData); }
+                if data.remaining() < 16 {
+                    return Err(ParseError::IncompleteData);
+                }
                 let mut uuid_bytes = [0u8; 16];
                 data.copy_to_slice(&mut uuid_bytes);
                 Ok(WsPacket::Message {

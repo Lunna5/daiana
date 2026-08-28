@@ -1,6 +1,6 @@
+use crate::packet::ParseError;
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use uuid::Uuid;
-use crate::packet::ParseError;
 
 const IN_OP_UNICAST: u8 = 0x0;
 const IN_OP_MULTICAST: u8 = 0x1;
@@ -31,7 +31,10 @@ impl WsInPacket {
                 buf.put_slice(payload);
                 buf.freeze()
             }
-            WsInPacket::Multicast { target_ids, payload } => {
+            WsInPacket::Multicast {
+                target_ids,
+                payload,
+            } => {
                 let mut buf = BytesMut::with_capacity(3 + (target_ids.len() * 16) + payload.len());
                 buf.put_u8(IN_OP_MULTICAST);
                 buf.put_u16(target_ids.len() as u16);
@@ -59,7 +62,9 @@ impl WsInPacket {
 
         match opcode {
             IN_OP_UNICAST => {
-                if data.remaining() < 16 { return Err(ParseError::IncompleteData); }
+                if data.remaining() < 16 {
+                    return Err(ParseError::IncompleteData);
+                }
 
                 let mut uuid_bytes = [0u8; 16];
                 data.copy_to_slice(&mut uuid_bytes);
@@ -71,7 +76,9 @@ impl WsInPacket {
             }
 
             IN_OP_MULTICAST => {
-                if data.remaining() < 2 { return Err(ParseError::IncompleteData); }
+                if data.remaining() < 2 {
+                    return Err(ParseError::IncompleteData);
+                }
 
                 let count = data.get_u16() as usize;
 
@@ -92,11 +99,7 @@ impl WsInPacket {
                 })
             }
 
-            IN_OP_BROADCAST => {
-                Ok(WsInPacket::Broadcast {
-                    payload: data,
-                })
-            }
+            IN_OP_BROADCAST => Ok(WsInPacket::Broadcast { payload: data }),
 
             _ => Err(ParseError::InvalidOpCode(opcode)),
         }
@@ -212,11 +215,17 @@ mod tests {
             target_ids: vec![Uuid::new_v4(), Uuid::new_v4()],
             payload: Bytes::from_static(b"multicast payload"),
         };
-        assert_eq!(WsInPacket::from_bytes(multicast.to_bytes()).unwrap(), multicast);
+        assert_eq!(
+            WsInPacket::from_bytes(multicast.to_bytes()).unwrap(),
+            multicast
+        );
 
         let broadcast = WsInPacket::Broadcast {
             payload: Bytes::from_static(b"broadcast payload"),
         };
-        assert_eq!(WsInPacket::from_bytes(broadcast.to_bytes()).unwrap(), broadcast);
+        assert_eq!(
+            WsInPacket::from_bytes(broadcast.to_bytes()).unwrap(),
+            broadcast
+        );
     }
 }

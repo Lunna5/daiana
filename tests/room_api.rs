@@ -1,14 +1,13 @@
-use actix_web::{test, web, App};
-use daiana::{service, AppState};
+use actix_web::{App, test, web};
 use daiana::channel::ChannelManager;
+use daiana::{AppState, service};
 use serde_json::Value;
 use uuid::Uuid;
 
 #[actix_web::test]
 async fn test_health_endpoint() {
-    let app = test::init_service(
-        App::new().service(service::health::endpoints(web::scope("")))
-    ).await;
+    let app =
+        test::init_service(App::new().service(service::health::endpoints(web::scope("")))).await;
 
     let req = test::TestRequest::get().uri("/").to_request();
     let resp = test::call_service(&app, req).await;
@@ -28,8 +27,9 @@ async fn test_create_room_endpoint() {
     let app = test::init_service(
         App::new()
             .app_data(app_state.clone())
-            .service(service::room::endpoints(web::scope("/room")))
-    ).await;
+            .service(service::room::endpoints(web::scope("/room"))),
+    )
+    .await;
 
     let req = test::TestRequest::post().uri("/room/").to_request();
     let resp = test::call_service(&app, req).await;
@@ -51,10 +51,13 @@ async fn test_connect_to_invalid_room_uuid() {
     let app = test::init_service(
         App::new()
             .app_data(app_state)
-            .service(service::room::endpoints(web::scope("/room")))
-    ).await;
+            .service(service::room::endpoints(web::scope("/room"))),
+    )
+    .await;
 
-    let req = test::TestRequest::get().uri("/room/invalid-uuid").to_request();
+    let req = test::TestRequest::get()
+        .uri("/room/invalid-uuid")
+        .to_request();
     let resp = test::call_service(&app, req).await;
 
     assert_eq!(resp.status(), actix_web::http::StatusCode::NOT_FOUND);
@@ -69,8 +72,9 @@ async fn test_connect_to_nonexistent_room() {
     let app = test::init_service(
         App::new()
             .app_data(app_state)
-            .service(service::room::endpoints(web::scope("/room")))
-    ).await;
+            .service(service::room::endpoints(web::scope("/room"))),
+    )
+    .await;
 
     let random_uuid = Uuid::new_v4();
     let req = test::TestRequest::get()

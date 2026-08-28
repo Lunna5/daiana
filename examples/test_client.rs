@@ -1,12 +1,12 @@
-use std::env;
-use std::time::Duration;
 use bytes::Bytes;
+use daiana::packet::{WsInPacket, WsPacket};
 use futures_util::{SinkExt, StreamExt};
 use serde_json::Value;
+use std::env;
+use std::time::Duration;
 use tokio_tungstenite::connect_async;
 use tokio_tungstenite::tungstenite::Message;
 use uuid::Uuid;
-use daiana::packet::{WsInPacket, WsPacket};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -34,13 +34,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
     let health_body: Value = health_res.json().await?;
-    println!("\x1b[32mOK\x1b[0m (ping: {:?}, version: {:?})", health_body["ping"], health_body["version"]);
+    println!(
+        "\x1b[32mOK\x1b[0m (ping: {:?}, version: {:?})",
+        health_body["ping"], health_body["version"]
+    );
 
     // 2. Create Room
     print!("🌱 [2/6] Creating room via POST /room/... ");
     let create_res = client.post(format!("{}/room/", base_http)).send().await?;
     let create_body: Value = create_res.json().await?;
-    let room_id_str = create_body["id"].as_str().ok_or("No 'id' field in room response")?;
+    let room_id_str = create_body["id"]
+        .as_str()
+        .ok_or("No 'id' field in room response")?;
     let room_id = Uuid::parse_str(room_id_str)?;
     println!("\x1b[32mOK\x1b[0m (Room UUID: \x1b[35m{}\x1b[0m)", room_id);
 
@@ -58,18 +63,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Alice should receive notification that Bob connected
     let mut bob_id = None;
     if let Some(Ok(Message::Binary(bin))) = alice_ws.next().await {
-        if let Ok(WsPacket::ClientConnected { client_id }) = WsPacket::from_bytes(Bytes::from(bin)) {
-            println!("   🦋 [Alice] Received ClientConnected event -> Bob UUID: \x1b[33m{}\x1b[0m", client_id);
-            bob_id = Some(client_id);
+        match WsPacket::from_bytes(bin) {
+            Ok(WsPacket::ClientConnected { client_id }) => {
+                println!(
+                    "   🦋 [Alice] Received ClientConnected event -> Bob UUID: \x1b[33m{}\x1b[0m",
+                    client_id
+                );
+                bob_id = Some(client_id);
+            }
+            other => panic!("Expected ClientConnected but got {:?}", other),
         }
     }
 
     // Bob should receive existing client sync (Alice)
     let mut alice_id = None;
     if let Some(Ok(Message::Binary(bin))) = bob_ws.next().await {
-        if let Ok(WsPacket::ClientConnected { client_id }) = WsPacket::from_bytes(Bytes::from(bin)) {
-            println!("   🦋 [Bob]   Received ClientConnected event -> Alice UUID: \x1b[33m{}\x1b[0m", client_id);
-            alice_id = Some(client_id);
+        match WsPacket::from_bytes(bin) {
+            Ok(WsPacket::ClientConnected { client_id }) => {
+                println!(
+                    "   🦋 [Bob]   Received ClientConnected event -> Alice UUID: \x1b[33m{}\x1b[0m",
+                    client_id
+                );
+                alice_id = Some(client_id);
+            }
+            other => panic!("Expected ClientConnected but got {:?}", other),
         }
     }
 
@@ -84,17 +101,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let broadcast_packet = WsInPacket::Broadcast {
         payload: Bytes::from_static(b"Hello everyone from Alice!"),
     };
-    alice_ws.send(Message::Binary(broadcast_packet.to_bytes())).await?;
+    alice_ws
+        .send(Message::Binary(broadcast_packet.to_bytes()))
+        .await?;
 
     // Bob receives Broadcast
     if let Some(Ok(Message::Binary(bin))) = bob_ws.next().await {
-        if let Ok(WsPacket::Message { sender_id, payload }) = WsPacket::from_bytes(Bytes::from(bin)) {
-            println!(
-                "   📥 [Bob]   Received Broadcast from {}: \x1b[32m'{}'\x1b[0m",
-                sender_id,
-                String::from_utf8_lossy(&payload)
-            );
-            assert_eq!(sender_id, alice_id);
+        match WsPacket::from_bytes(bin) {
+            Ok(WsPacket::Message { sender_id, payload }) => {
+                println!(
+                    "   📥 [Bob]   Received Broadcast from {}: \x1b[32m'{}'\x1b[0m",
+                    sender_id,
+                    String::from_utf8_lossy(&payload)
+                );
+                assert_eq!(sender_id, alice_id);
+            }
+            other => panic!("Expected Broadcast Message but got {:?}", other),
         }
     }
 
@@ -104,17 +126,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         target_id: alice_id,
         payload: Bytes::from_static(b"Secret message for Alice"),
     };
-    bob_ws.send(Message::Binary(unicast_packet.to_bytes())).await?;
+    bob_ws
+        .send(Message::Binary(unicast_packet.to_bytes()))
+        .await?;
 
     // Alice receives Unicast
     if let Some(Ok(Message::Binary(bin))) = alice_ws.next().await {
-        if let Ok(WsPacket::Message { sender_id, payload }) = WsPacket::from_bytes(Bytes::from(bin)) {
-            println!(
-                "   📥 [Alice] Received Unicast from {}: \x1b[32m'{}'\x1b[0m",
-                sender_id,
-                String::from_utf8_lossy(&payload)
-            );
-            assert_eq!(sender_id, bob_id);
+        match WsPacket::from_bytes(bin) {
+            Ok(WsPacket::Message { sender_id, payload }) => {
+                println!(
+                    "   📥 [Alice] Received Unicast from {}: \x1b[32m'{}'\x1b[0m",
+                    sender_id,
+                    String::from_utf8_lossy(&payload)
+                );
+                assert_eq!(sender_id, bob_id);
+            }
+            other => panic!("Expected Unicast Message but got {:?}", other),
         }
     }
 
@@ -124,16 +151,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         target_ids: vec![alice_id],
         payload: Bytes::from_static(b"Group multicast message"),
     };
-    bob_ws.send(Message::Binary(multicast_packet.to_bytes())).await?;
+    bob_ws
+        .send(Message::Binary(multicast_packet.to_bytes()))
+        .await?;
 
     if let Some(Ok(Message::Binary(bin))) = alice_ws.next().await {
-        if let Ok(WsPacket::Message { sender_id, payload }) = WsPacket::from_bytes(Bytes::from(bin)) {
-            println!(
-                "   📥 [Alice] Received Multicast from {}: \x1b[32m'{}'\x1b[0m",
-                sender_id,
-                String::from_utf8_lossy(&payload)
-            );
-            assert_eq!(sender_id, bob_id);
+        match WsPacket::from_bytes(bin) {
+            Ok(WsPacket::Message { sender_id, payload }) => {
+                println!(
+                    "   📥 [Alice] Received Multicast from {}: \x1b[32m'{}'\x1b[0m",
+                    sender_id,
+                    String::from_utf8_lossy(&payload)
+                );
+                assert_eq!(sender_id, bob_id);
+            }
+            other => panic!("Expected Multicast Message but got {:?}", other),
         }
     }
 
@@ -146,9 +178,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Alice should receive Bob's disconnect event
     tokio::time::sleep(Duration::from_millis(50)).await;
     if let Some(Ok(Message::Binary(bin))) = alice_ws.next().await {
-        if let Ok(WsPacket::ClientDisconnected { client_id }) = WsPacket::from_bytes(Bytes::from(bin)) {
-            println!("   🦋 [Alice] Received ClientDisconnected event for Bob: \x1b[33m{}\x1b[0m", client_id);
-            assert_eq!(client_id, bob_id);
+        match WsPacket::from_bytes(bin) {
+            Ok(WsPacket::ClientDisconnected { client_id }) => {
+                println!(
+                    "   🦋 [Alice] Received ClientDisconnected event for Bob: \x1b[33m{}\x1b[0m",
+                    client_id
+                );
+                assert_eq!(client_id, bob_id);
+            }
+            other => panic!("Expected ClientDisconnected but got {:?}", other),
         }
     }
 

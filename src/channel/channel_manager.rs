@@ -1,9 +1,9 @@
-use std::collections::HashMap;
-use std::sync::Mutex;
-use uuid::Uuid;
 use crate::channel::{Channel, Client};
 use crate::util::error::DaianaError;
 use crate::util::time::get_current_time_in_seconds;
+use std::collections::HashMap;
+use std::sync::Mutex;
+use uuid::Uuid;
 
 #[derive(Debug)]
 pub struct ChannelManager {
@@ -24,7 +24,7 @@ impl ChannelManager {
             max_clients_on_room: std::env::var("MAX_CLIENTS_ON_CHANNEL")
                 .ok()
                 .and_then(|s| s.parse().ok())
-                .unwrap_or(5)
+                .unwrap_or(5),
         }
     }
 
@@ -41,7 +41,10 @@ impl ChannelManager {
     }
 
     pub fn channel_exists(&self, id: Uuid) -> bool {
-        self.channels.lock().expect("Unable to lock channel").contains_key(&id)
+        self.channels
+            .lock()
+            .expect("Unable to lock channel")
+            .contains_key(&id)
     }
 
     pub fn mark_channel_as_active(&self, id: Uuid) -> Result<(), DaianaError> {
@@ -69,8 +72,8 @@ impl ChannelManager {
         let mut channels = self.channels.lock().expect("Unable to lock channel");
 
         if let Some(channel) = channels.get_mut(&id) {
-            if channel.clients.len() >= self.max_clients_on_room as usize  {
-                return Err(DaianaError::MaximumClientsReached)
+            if channel.clients.len() >= self.max_clients_on_room as usize {
+                return Err(DaianaError::MaximumClientsReached);
             }
 
             channel.clients.push(client);
@@ -101,14 +104,15 @@ impl ChannelManager {
         }
     }
 
-    pub fn get_client(&self, channel_id: Uuid, client_id: Uuid) -> Result<Option<Client>, DaianaError> {
+    pub fn get_client(
+        &self,
+        channel_id: Uuid,
+        client_id: Uuid,
+    ) -> Result<Option<Client>, DaianaError> {
         let channels = self.channels.lock().expect("Unable to lock channel");
 
         if let Some(channel) = channels.get(&channel_id) {
-            let client = channel.clients
-                .iter()
-                .find(|c| c.id == client_id)
-                .cloned();
+            let client = channel.clients.iter().find(|c| c.id == client_id).cloned();
 
             Ok(client)
         } else {
@@ -171,10 +175,25 @@ mod tests {
         let fake_id = Uuid::new_v4();
         let client_id = Uuid::new_v4();
 
-        assert!(matches!(manager.get_clients(fake_id), Err(DaianaError::InvalidRoomId)));
-        assert!(matches!(manager.get_client(fake_id, client_id), Err(DaianaError::InvalidRoomId)));
-        assert!(matches!(manager.client_exists(fake_id, client_id), Err(DaianaError::InvalidRoomId)));
-        assert!(matches!(manager.remove_client(fake_id, client_id), Err(DaianaError::InvalidRoomId)));
-        assert!(matches!(manager.clear_clients(fake_id), Err(DaianaError::InvalidRoomId)));
+        assert!(matches!(
+            manager.get_clients(fake_id),
+            Err(DaianaError::InvalidRoomId)
+        ));
+        assert!(matches!(
+            manager.get_client(fake_id, client_id),
+            Err(DaianaError::InvalidRoomId)
+        ));
+        assert!(matches!(
+            manager.client_exists(fake_id, client_id),
+            Err(DaianaError::InvalidRoomId)
+        ));
+        assert!(matches!(
+            manager.remove_client(fake_id, client_id),
+            Err(DaianaError::InvalidRoomId)
+        ));
+        assert!(matches!(
+            manager.clear_clients(fake_id),
+            Err(DaianaError::InvalidRoomId)
+        ));
     }
 }

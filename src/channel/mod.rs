@@ -1,9 +1,9 @@
 mod channel_manager;
 
-use std::fmt::Formatter;
-use actix_ws::Session;
-use uuid::Uuid;
 use crate::util::time::get_current_time_in_seconds;
+use actix_ws::Session;
+use std::fmt::Formatter;
+use uuid::Uuid;
 
 pub use channel_manager::ChannelManager;
 
@@ -40,7 +40,7 @@ impl Channel {
         Self {
             id: uuid,
             clients: Vec::new(),
-            time_without_clients: get_current_time_in_seconds()
+            time_without_clients: get_current_time_in_seconds(),
         }
     }
 }

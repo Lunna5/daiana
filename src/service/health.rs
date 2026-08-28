@@ -1,4 +1,4 @@
-use actix_web::{get, Responder, HttpResponse, Scope};
+use actix_web::{HttpResponse, Responder, Scope, get};
 use serde_json::json;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");

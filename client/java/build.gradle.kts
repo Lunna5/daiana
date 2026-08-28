@@ -1,17 +1,14 @@
 plugins {
     id("java")
     id("java-library")
-    id("maven-publish")
-    id("signing")
+    id("com.vanniktech.maven.publish") version "0.37.0"
 }
 
-group = "dev.lunna.daiana4j"
-version = "1.0.0"
+group = "dev.lunna"
+version = "0.0.1"
 
 java {
     toolchain { languageVersion = JavaLanguageVersion.of(25) }
-    withSourcesJar()
-    withJavadocJar()
 }
 
 repositories {
@@ -32,39 +29,37 @@ tasks.test {
     useJUnitPlatform()
 }
 
-publishing {
-    publications {
-        create<MavenPublication>("mavenJava") {
-            from(components["java"])
+mavenPublishing {
+    publishToMavenCentral()
 
-            pom {
-                name.set("Daiana")
-                description.set("High-performance, asynchronous Java client for the Daiana room-based binary WebSocket relay server, powered by Netty.")
-                url.set("https://github.com/Lunna5/daiana")
+    signAllPublications()
 
-                licenses {
-                    license {
-                        name.set("GNU Affero General Public License v3.0")
-                        url.set("https://www.gnu.org/licenses/agpl-3.0.html")
-                    }
-                }
-                developers {
-                    developer {
-                        id.set("Lunna5")
-                        name.set("Lunna Martín González")
-                        email.set("git@lunna.dev")
-                    }
-                }
-                scm {
-                    connection.set("scm:git:git://github.com/Lunna5/daiana.git")
-                    developerConnection.set("scm:git:ssh://github.com/Lunna5/daiana.git")
-                    url.set("https://github.com/Lunna5/daiana")
-                }
+    pom {
+        name.set("Daiana")
+        description.set("High-performance, asynchronous Java client for the Daiana room-based binary WebSocket relay server, powered by Netty.")
+        url.set("https://github.com/Lunna5/daiana")
+
+        licenses {
+            license {
+                name.set("GNU Affero General Public License v3.0")
+                url.set("https://www.gnu.org/licenses/agpl-3.0.html")
             }
+        }
+        developers {
+            developer {
+                id.set("Lunna5")
+                name.set("Lunna Martín González")
+                email.set("git@lunna.dev")
+            }
+        }
+        scm {
+            connection.set("scm:git:git://github.com/Lunna5/daiana.git")
+            developerConnection.set("scm:git:ssh://github.com/Lunna5/daiana.git")
+            url.set("https://github.com/Lunna5/daiana")
         }
     }
 }
 
-signing {
-    sign(publishing.publications["mavenJava"])
+tasks.matching { it.name == "generateMetadataFileForMavenPublication" }.configureEach {
+    dependsOn(tasks.matching { it.name == "plainJavadocJar" })
 }

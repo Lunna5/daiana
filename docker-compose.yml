@@ -1,8 +1,6 @@
 services:
   daiana:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/lunna5/daiana:latest
     container_name: daiana
     restart: unless-stopped
     ports:

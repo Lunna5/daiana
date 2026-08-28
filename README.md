@@ -90,24 +90,49 @@ RUST_LOG=info
 
 ### 1. Build and Run Server
 
-#### Using Cargo:
+#### Using Docker (Pre-built Image):
 ```bash
-# Start the server locally
-cargo run
-```
-
-#### Using Docker:
-```bash
-# Build the Docker image
-docker build -t daiana .
-
-# Run the container
-docker run -p 8080:8080 daiana
+docker run -d -p 8080:8080 --name daiana ghcr.io/lunna5/daiana:latest
 ```
 
 #### Using Docker Compose:
+Create a `docker-compose.yml` file:
+
+```yaml
+services:
+  daiana:
+    image: ghcr.io/lunna5/daiana:latest
+    container_name: daiana
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8080
+      - MAX_CLIENTS_ON_CHANNEL=5
+      - CHANNEL_TIMEOUT=30
+      - RUST_LOG=info
+```
+
+Run with:
 ```bash
 docker compose up -d
+```
+
+#### Using Cargo (Locally):
+```bash
+# Clone the repository
+git clone https://github.com/Lunna5/daiana.git
+cd daiana
+
+# Start the server
+cargo run
+```
+
+#### Building Docker Image Locally:
+```bash
+docker build -t daiana .
+docker run -p 8080:8080 daiana
 ```
 
 The server will initialize on `http://0.0.0.0:8080`.
@@ -135,7 +160,7 @@ cargo run --example test_client
 
 #### 🌐 TypeScript Client Example:
 ```bash
-npx tsx examples/test_client.ts
+pnpx tsx examples/node/test_client.ts
 ```
 
 Both examples automate:
@@ -149,4 +174,4 @@ Both examples automate:
 
 ## 📄 License
 
-This project is licensed under the AGPL License.
+This project is licensed under the GNU-AGPL License.

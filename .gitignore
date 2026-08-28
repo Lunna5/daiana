@@ -1,6 +1,5 @@
 /target
 .idea/
-
 .env
-
 node_modules
+.gradle

@@ -22,9 +22,9 @@ Daiana provides room management and ultra-low latency real-time communication be
 
 ## 📦 Binary Protocol Specification
 
-Daiana communicates via raw WebSocket binary frames. The protocol defines two sets of packets: **Client-to-Server (`WsInPacket`)** and **Server-to-Client (`WsPacket`)**.
+Daiana communicates via raw WebSocket binary frames. The protocol defines two sets of packets: **Client-to-Server (`WsOutPacket`)** and **Server-to-Client (`WsOutPacket`)**.
 
-### 1. Client $\rightarrow$ Server (`WsInPacket`)
+### 1. Client $\rightarrow$ Server (`WsOutPacket`)
 
 Clients send binary messages starting with an **Opcode** byte followed by the payload structure:
 
@@ -38,7 +38,7 @@ Clients send binary messages starting with an **Opcode** byte followed by the pa
 
 ---
 
-### 2. Server $\rightarrow$ Client (`WsPacket`)
+### 2. Server $\rightarrow$ Client (`WsOutPacket`)
 
 The server emits binary frames formatted as follows:
 

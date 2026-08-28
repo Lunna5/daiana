@@ -1,5 +1,4 @@
 use std::env;
-use std::sync::{Arc, Mutex};
 use actix_web::{App, HttpServer, web};
 use actix_web::middleware::{Compress, Logger, NormalizePath, TrailingSlash};
 use actix_web::web::Data;

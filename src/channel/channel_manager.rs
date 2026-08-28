@@ -11,6 +11,12 @@ pub struct ChannelManager {
     pub max_clients_on_room: u16,
 }
 
+impl Default for ChannelManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ChannelManager {
     pub fn new() -> Self {
         Self {
@@ -63,7 +69,7 @@ impl ChannelManager {
         let mut channels = self.channels.lock().expect("Unable to lock channel");
 
         if let Some(channel) = channels.get_mut(&id) {
-            if (channel.clients.len() >= self.max_clients_on_room as usize) {
+            if channel.clients.len() >= self.max_clients_on_room as usize  {
                 return Err(DaianaError::MaximumClientsReached)
             }
 

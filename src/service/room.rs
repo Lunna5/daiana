@@ -6,7 +6,7 @@ use crate::{packet, AppState};
 use crate::util::error::DaianaError;
 use futures_util::StreamExt as _;
 use log::{debug, error};
-use uuid::{Bytes, Uuid};
+use uuid::Uuid;
 use crate::channel::Client;
 use crate::packet::{WsInPacket, WsPacket};
 
@@ -39,7 +39,7 @@ async fn connect_ws(
     let client_uuid = Uuid::new_v4();
 
 
-    debug!("User with uuid: {}, connected to room {}", &client_uuid, &room_uuid);
+    debug!("User with uuid: {}, connected to room {}", client_uuid, room_uuid);
 
     let (res, mut session, stream) = actix_ws::handle(&req, stream)
         .map_err(|error| {
@@ -106,7 +106,7 @@ async fn connect_ws(
                     }
                 }
 
-                Ok(AggregatedMessage::Text(text)) => {
+                Ok(AggregatedMessage::Text(_text)) => {
                     session.text("Server does not support text input").await.unwrap();
                 }
 
@@ -114,7 +114,7 @@ async fn connect_ws(
                     session.pong(&msg).await.unwrap();
                 }
 
-                Ok(AggregatedMessage::Close(reason)) => {
+                Ok(AggregatedMessage::Close(_reason)) => {
                     debug!("Connection closed by {}", client_uuid);
                     break;
                 }

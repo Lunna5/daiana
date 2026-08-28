@@ -109,13 +109,12 @@ pub async fn send_to_client(
 ) {
     let bytes = packet.to_bytes();
 
-    if let Ok(Some(mut client)) = channel_manager.get_client(room_id, target_client_id) {
-        if let Err(e) = client.session.binary(bytes).await {
+    if let Ok(Some(mut client)) = channel_manager.get_client(room_id, target_client_id)
+        && let Err(e) = client.session.binary(bytes).await {
             warn!("Failed to send direct message to {}: {}", target_client_id, e);
 
             disconnect_and_broadcast(channel_manager, room_id, target_client_id).await;
         }
-    }
 }
 
 pub async fn send_server_info_to_room(

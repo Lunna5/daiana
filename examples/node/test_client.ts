@@ -110,11 +110,13 @@ async function main() {
   process.stdout.write(`🌱 [1/5] Checking server health at ${HTTP_URL}/... `);
   const healthRes = await fetch(`${HTTP_URL}/`);
   const health = await healthRes.json();
+  // @ts-ignore
   console.log(`\x1b[32mOK\x1b[0m (ping: ${health.ping}, version: ${health.version})`);
 
   // 2. Create room
   process.stdout.write(`🌱 [2/5] Creating room via POST ${HTTP_URL}/room/... `);
   const roomRes = await fetch(`${HTTP_URL}/room/`, { method: "POST" });
+  // @ts-ignore
   const { id: roomId } = await roomRes.json();
   console.log(`\x1b[32mOK\x1b[0m (Room UUID: \x1b[35m${roomId}\x1b[0m)`);
 
@@ -143,7 +145,7 @@ async function main() {
   alice.addEventListener("message", (event) => {
     const packet = decodePacket(event.data as ArrayBuffer);
     if (packet.type === "ClientConnected") {
-      bobId = packet.clientId;
+      bobId = packet.clientId || "";
       console.log(`   🦋 [Alice] Received ClientConnected event -> Bob: \x1b[33m${bobId}\x1b[0m`);
     } else if (packet.type === "Message") {
       console.log(`   📥 [Alice] Received Message from ${packet.senderId}: \x1b[32m'${packet.payload}'\x1b[0m`);
@@ -155,7 +157,7 @@ async function main() {
   bob.addEventListener("message", (event) => {
     const packet = decodePacket(event.data as ArrayBuffer);
     if (packet.type === "ClientConnected") {
-      aliceId = packet.clientId;
+      aliceId = packet.clientId || "";
       console.log(`   🦋 [Bob]   Received ClientConnected event -> Alice: \x1b[33m${aliceId}\x1b[0m`);
     } else if (packet.type === "Message") {
       console.log(`   📥 [Bob]   Received Message from ${packet.senderId}: \x1b[32m'${packet.payload}'\x1b[0m`);

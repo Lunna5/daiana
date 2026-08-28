@@ -8,17 +8,11 @@ use futures_util::StreamExt as _;
 use log::{debug, error};
 use uuid::{Bytes, Uuid};
 use crate::channel::Client;
-
-pub struct RouterMessage {
-    pub sender_id: Uuid,
-    pub opcode: u8,
-    pub targets: Option<Vec<Uuid>>,
-    pub payload: Bytes,
-}
+use crate::packet::{WsInPacket, WsPacket};
 
 #[post("/")]
 async fn create_room(state: Data<AppState>) -> impl Responder {
-    let channel_manager = state.channel_manager.lock().expect("Failed to lock the channel_manager");
+    let channel_manager = &state.channel_manager;
     let id = channel_manager.create_channel();
 
     HttpResponse::Ok().json(json!({ "id": id }))
@@ -35,7 +29,7 @@ async fn connect_ws(
     let room_uuid = Uuid::parse_str(&id).map_err(|_| DaianaError::InvalidRoomId)?;
 
     {
-        let channel_manager = state.channel_manager.lock().expect("Failed to lock the channel_manager");
+        let channel_manager = &state.channel_manager;
 
         if !channel_manager.channel_exists(room_uuid) {
             return Err(DaianaError::InvalidRoomId);
@@ -56,7 +50,7 @@ async fn connect_ws(
     let client = Client::new(client_uuid, session.clone());
 
     {
-        let channel_manager = state.channel_manager.lock().expect("Failed to lock the channel_manager");
+        let channel_manager = &state.channel_manager;
 
         if !channel_manager.channel_exists(room_uuid) {
             return Err(DaianaError::InvalidRoomId);
@@ -69,11 +63,47 @@ async fn connect_ws(
         .aggregate_continuations()
         .max_continuation_size(2_usize.pow(20)); // Aggregate continuation frames up to 1MiB
 
+    {
+        packet::connect_and_broadcast(&state.channel_manager, room_uuid, client_uuid).await;
+    }
+
     rt::spawn(async move {
         while let Some(msg) = stream.next().await {
             match msg {
                 Ok(AggregatedMessage::Binary(msg)) => {
+                    match WsInPacket::from_bytes(msg) {
 
+                        Ok(WsInPacket::Unicast { target_id, payload }) => {
+                            let out_packet = WsPacket::Message {
+                                sender_id: client_uuid,
+                                payload
+                            };
+
+                            packet::send_to_client(&state.channel_manager, room_uuid, target_id, &out_packet).await;
+                        }
+
+                        Ok(WsInPacket::Multicast { target_ids, payload }) => {
+                            let out_packet = WsPacket::Message {
+                                sender_id: client_uuid,
+                                payload
+                            };
+
+                            packet::multicast_to_clients(&state.channel_manager, room_uuid, &target_ids, &out_packet).await;
+                        }
+
+                        Ok(WsInPacket::Broadcast { payload }) => {
+                            let out_packet = WsPacket::Message {
+                                sender_id: client_uuid,
+                                payload
+                            };
+
+                            Box::pin(packet::broadcast_to_room(&state.channel_manager, room_uuid, &out_packet, Some(client_uuid))).await;
+                        }
+
+                        Err(e) => {
+                            error!("Error while parsing client packet {}: {:?}", client_uuid, e);
+                        }
+                    }
                 }
 
                 Ok(AggregatedMessage::Text(text)) => {
@@ -94,8 +124,7 @@ async fn connect_ws(
         }
 
         {
-            let channel_manager = state.channel_manager.lock().expect("Failed to lock the channel_manager");
-            packet::disconnect_and_broadcast(&channel_manager, room_uuid, client_uuid).await;
+            packet::disconnect_and_broadcast(&state.channel_manager, room_uuid, client_uuid).await;
         }
     });
 

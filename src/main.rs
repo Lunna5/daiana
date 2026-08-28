@@ -20,7 +20,7 @@ async fn main() -> std::io::Result<()> {
     debug!("Debug mode enabled");
 
     let app_state = Data::new(AppState {
-        channel_manager: Arc::new(Mutex::new(ChannelManager::new())),
+        channel_manager: ChannelManager::new(),
     });
 
     HttpServer::new(move || {

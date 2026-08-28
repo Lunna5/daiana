@@ -76,6 +76,12 @@ MAX_CLIENTS_ON_CHANNEL=5
 # Room inactivity timeout in seconds (default: 30)
 CHANNEL_TIMEOUT=30
 
+# Maximum packets per second per client connection (default: 100, 0 to disable)
+MAX_PACKETS_PER_SEC=100
+
+# Maximum packet payload size in bytes (default: 65536 / 64KiB)
+MAX_PACKET_SIZE_BYTES=65536
+
 # Log level filter (trace, debug, info, warn, error)
 RUST_LOG=info
 ```
@@ -111,6 +117,8 @@ services:
       - PORT=8080
       - MAX_CLIENTS_ON_CHANNEL=5
       - CHANNEL_TIMEOUT=30
+      - MAX_PACKETS_PER_SEC=100
+      - MAX_PACKET_SIZE_BYTES=65536
       - RUST_LOG=info
 ```
 

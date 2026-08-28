@@ -10,4 +10,6 @@ services:
       - PORT=8080
       - MAX_CLIENTS_ON_CHANNEL=5
       - CHANNEL_TIMEOUT=30
+      - MAX_PACKETS_PER_SEC=100
+      - MAX_PACKET_SIZE_BYTES=65536
       - RUST_LOG=info

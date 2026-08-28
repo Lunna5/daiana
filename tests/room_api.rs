@@ -1,5 +1,4 @@
 use actix_web::{App, test, web};
-use daiana::channel::ChannelManager;
 use daiana::{AppState, service};
 use serde_json::Value;
 use uuid::Uuid;
@@ -20,9 +19,7 @@ async fn test_health_endpoint() {
 
 #[actix_web::test]
 async fn test_create_room_endpoint() {
-    let app_state = web::Data::new(AppState {
-        channel_manager: ChannelManager::new(),
-    });
+    let app_state = web::Data::new(AppState::default());
 
     let app = test::init_service(
         App::new()
@@ -44,9 +41,7 @@ async fn test_create_room_endpoint() {
 
 #[actix_web::test]
 async fn test_connect_to_invalid_room_uuid() {
-    let app_state = web::Data::new(AppState {
-        channel_manager: ChannelManager::new(),
-    });
+    let app_state = web::Data::new(AppState::default());
 
     let app = test::init_service(
         App::new()
@@ -65,9 +60,7 @@ async fn test_connect_to_invalid_room_uuid() {
 
 #[actix_web::test]
 async fn test_connect_to_nonexistent_room() {
-    let app_state = web::Data::new(AppState {
-        channel_manager: ChannelManager::new(),
-    });
+    let app_state = web::Data::new(AppState::default());
 
     let app = test::init_service(
         App::new()

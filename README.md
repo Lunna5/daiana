@@ -1,4 +1,4 @@
-# Daiana 🌸
+# Daiana 🍃🪄
 
 A fast, lightweight, and concurrent room-based binary WebSocket relay server built with **Rust** and **Actix Web**.
 

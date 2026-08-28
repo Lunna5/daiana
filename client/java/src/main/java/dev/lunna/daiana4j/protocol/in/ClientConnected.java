@@ -9,16 +9,33 @@ import java.util.UUID;
 
 import static java.util.Objects.requireNonNull;
 
+/**
+ * Inbound packet notifying that a peer connected to the room (Opcode 0x00).
+ *
+ * @param clientId the {@link UUID} of the peer that joined
+ */
 public record ClientConnected(@NotNull UUID clientId) implements WsInPacket {
+
+    /**
+     * Compact constructor validating non-null arguments.
+     *
+     * @param clientId the {@link UUID} of the peer that joined
+     */
     public ClientConnected {
         requireNonNull(clientId, "clientId cannot be null");
     }
 
     @Override
-    public OpCodes.Server2Client opCode() {
+    public @NotNull OpCodes.Server2Client opCode() {
         return OpCodes.Server2Client.CLIENT_CONNECTED;
     }
 
+    /**
+     * Deserializes a {@link ClientConnected} packet from a {@link ByteBuf}.
+     *
+     * @param buf the buffer to read from
+     * @return the deserialized {@link ClientConnected} packet
+     */
     @NotNull
     public static ClientConnected fromByteBuf(@NotNull final ByteBuf buf) {
         return new ClientConnected(UuidUtil.fromByteBuf(buf));

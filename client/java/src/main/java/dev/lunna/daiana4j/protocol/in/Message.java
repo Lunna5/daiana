@@ -10,7 +10,20 @@ import java.util.UUID;
 
 import static java.util.Objects.requireNonNull;
 
-public record Message(@NotNull UUID senderId, byte[] payload) implements WsInPacket {
+/**
+ * Inbound packet containing a binary message routed from a peer (Opcode 0x02).
+ *
+ * @param senderId the verified {@link UUID} of the peer that sent the message
+ * @param payload  the raw byte payload
+ */
+public record Message(@NotNull UUID senderId, @NotNull byte[] payload) implements WsInPacket {
+
+    /**
+     * Compact constructor validating non-null arguments.
+     *
+     * @param senderId the verified {@link UUID} of the peer that sent the message
+     * @param payload  the raw byte payload
+     */
     public Message {
         requireNonNull(senderId, "senderId cannot be null");
         requireNonNull(payload, "payload cannot be null");
@@ -21,7 +34,6 @@ public record Message(@NotNull UUID senderId, byte[] payload) implements WsInPac
         if (this == obj) return true;
         if (!(obj instanceof Message message)) return false;
         return senderId.equals(message.senderId) && Arrays.equals(payload, message.payload);
-
     }
 
     @Override
@@ -37,10 +49,17 @@ public record Message(@NotNull UUID senderId, byte[] payload) implements WsInPac
     }
 
     @Override
-    public OpCodes.Server2Client opCode() {
+    public @NotNull OpCodes.Server2Client opCode() {
         return OpCodes.Server2Client.MESSAGE;
     }
 
+    /**
+     * Deserializes a {@link Message} packet from a {@link ByteBuf}.
+     *
+     * @param buf the buffer containing the 16-byte sender UUID followed by payload bytes
+     * @return the deserialized {@link Message} packet
+     */
+    @NotNull
     public static Message fromByteBuf(@NotNull final ByteBuf buf) {
         requireNonNull(buf, "buf cannot be null");
         UUID senderId = UuidUtil.fromByteBuf(buf);

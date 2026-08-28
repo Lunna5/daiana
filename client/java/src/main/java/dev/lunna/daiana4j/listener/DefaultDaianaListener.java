@@ -5,11 +5,24 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.UUID;
 
+import static java.util.Objects.requireNonNull;
+
+/**
+ * Default implementation of {@link DaianaListener} that automatically tracks peer membership
+ * in the provided {@link RoomManager}.
+ * <p>
+ * Registers connecting clients into the room list and removes disconnecting clients.
+ */
 public final class DefaultDaianaListener implements DaianaListener {
     private final RoomManager roomManager;
 
-    public DefaultDaianaListener(RoomManager roomManager) {
-        this.roomManager = roomManager;
+    /**
+     * Constructs a new {@link DefaultDaianaListener}.
+     *
+     * @param roomManager the {@link RoomManager} instance to update
+     */
+    public DefaultDaianaListener(@NotNull RoomManager roomManager) {
+        this.roomManager = requireNonNull(roomManager, "roomManager cannot be null");
     }
 
     @Override

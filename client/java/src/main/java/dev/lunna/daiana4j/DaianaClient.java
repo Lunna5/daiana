@@ -4,6 +4,7 @@ import dev.lunna.daiana4j.connection.DaianaChannelInitializer;
 import dev.lunna.daiana4j.listener.DaianaListener;
 import dev.lunna.daiana4j.listener.DefaultDaianaListener;
 import dev.lunna.daiana4j.protocol.out.BroadcastPacket;
+import dev.lunna.daiana4j.protocol.out.MulticastPacket;
 import dev.lunna.daiana4j.protocol.out.UnicastPacket;
 import dev.lunna.daiana4j.protocol.out.WsOutPacket;
 import dev.lunna.daiana4j.room.RoomManager;
@@ -30,10 +31,34 @@ import java.util.regex.Pattern;
 
 import static java.util.Objects.requireNonNull;
 
+/**
+ * High-performance, asynchronous Java client for the Daiana binary WebSocket relay server.
+ * <p>
+ * This client manages the underlying Netty event loop, channel pipeline, WebSocket handshake,
+ * and packet dispatching. It supports broadcasting messages, sending direct private messages (unicast),
+ * and multicasting to selected peers.
+ *
+ * <p>Example usage:
+ * <pre>{@code
+ * URI roomUri = URI.create("ws://localhost:8080/room/4b045f44-8d48-436f-b2b0-062e7ea66b7a");
+ *
+ * DaianaClient client = DaianaClientBuilder.create()
+ *         .serverUri(roomUri)
+ *         .addListener(new DaianaListener() {
+ *             @Override
+ *             public void onMessage(UUID senderId, byte[] payload) {
+ *                 System.out.println("Received: " + new String(payload));
+ *             }
+ *         })
+ *         .build();
+ *
+ * client.connect().join();
+ * client.broadcast("Hello room!".getBytes(StandardCharsets.UTF_8)).join();
+ * }</pre>
+ */
 public final class DaianaClient implements AutoCloseable {
     private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
     private static final Pattern ROOM_ID_PATTERN = Pattern.compile("\"id\"\\s*:\\s*\"([^\"]+)\"");
-
 
     private final URI uri;
     private final List<DaianaListener> listeners;
@@ -45,6 +70,15 @@ public final class DaianaClient implements AutoCloseable {
 
     private Channel channel;
 
+    /**
+     * Constructs a new {@link DaianaClient}.
+     *
+     * @param uri              the WebSocket URI pointing to the target room (e.g. {@code ws://host:port/room/{roomId}})
+     * @param listeners        the list of event listeners to be notified upon packet reception and connection events
+     * @param options          the client configuration options
+     * @param sharedGroup      optional shared {@link EventLoopGroup}; if {@code null}, a new {@link NioEventLoopGroup} is managed
+     * @param defaultListeners whether to register the {@link DefaultDaianaListener} for automatic room peer tracking
+     */
     public DaianaClient(@NotNull final URI uri,
                         @NotNull final List<DaianaListener> listeners,
                         @NotNull final DaianaClientOptions options,
@@ -68,7 +102,14 @@ public final class DaianaClient implements AutoCloseable {
         }
     }
 
-    public static CompletableFuture<ServerRoomConnector> createRoom(URI httpBaseUri) {
+    /**
+     * Sends an HTTP {@code POST /room/} request to the Daiana server to create a new room.
+     *
+     * @param httpBaseUri the base HTTP URI of the server (e.g. {@code http://localhost:8080})
+     * @return a {@link CompletableFuture} resolving to a {@link ServerRoomConnector} containing the created room's UUID
+     */
+    public static CompletableFuture<ServerRoomConnector> createRoom(@NotNull final URI httpBaseUri) {
+        requireNonNull(httpBaseUri, "httpBaseUri cannot be null");
         String base = httpBaseUri.toString().replaceAll("/+$", "");
         URI endpoint = URI.create(base + "/room/");
 
@@ -93,7 +134,11 @@ public final class DaianaClient implements AutoCloseable {
                 });
     }
 
-
+    /**
+     * Connects to the Daiana WebSocket room asynchronously and performs the WebSocket handshake.
+     *
+     * @return a {@link CompletableFuture} completing when the WebSocket handshake has successfully finished
+     */
     public CompletableFuture<Void> connect() {
         CompletableFuture<Void> handshakeFuture = new CompletableFuture<>();
 
@@ -119,23 +164,69 @@ public final class DaianaClient implements AutoCloseable {
         return handshakeFuture;
     }
 
+    /**
+     * Checks if the WebSocket channel is currently open and active.
+     *
+     * @return {@code true} if connected and active, {@code false} otherwise
+     */
     public boolean isConnected() {
         return channel != null && channel.isActive();
     }
 
-    public CompletableFuture<Void> broadcast(byte[] payload) {
+    /**
+     * Returns the {@link RoomManager} maintaining the list of active connected peers in this room.
+     *
+     * @return the {@link RoomManager} instance
+     */
+    public @NotNull RoomManager getRoomManager() {
+        return roomManager;
+    }
+
+    /**
+     * Broadcasts a binary payload to all other clients connected to the room.
+     *
+     * @param payload the raw byte array to broadcast
+     * @return a {@link CompletableFuture} completing when the packet is written and flushed
+     */
+    public CompletableFuture<Void> broadcast(@NotNull final byte[] payload) {
+        requireNonNull(payload, "payload cannot be null");
         return sendPacket(new BroadcastPacket(payload));
     }
 
-    public CompletableFuture<Void> sendUnicast(@NotNull final UUID clientId, byte[] payload) {
+    /**
+     * Sends a private direct message (unicast) to a specific client in the room.
+     *
+     * @param clientId the destination client's {@link UUID}
+     * @param payload  the raw byte array to send
+     * @return a {@link CompletableFuture} completing when the packet is written and flushed
+     */
+    public CompletableFuture<Void> sendUnicast(@NotNull final UUID clientId, @NotNull final byte[] payload) {
+        requireNonNull(clientId, "clientId cannot be null");
+        requireNonNull(payload, "payload cannot be null");
         return sendPacket(new UnicastPacket(clientId, payload));
     }
 
-    public CompletableFuture<Void> sendMulticast(@NotNull final List<UUID> clientIds, byte[] payload) {
-        return sendPacket(new dev.lunna.daiana4j.protocol.out.MulticastPacket(clientIds, payload));
+    /**
+     * Sends a message to multiple specified clients (multicast) in the room.
+     *
+     * @param clientIds the list of destination client {@link UUID}s
+     * @param payload   the raw byte array to send
+     * @return a {@link CompletableFuture} completing when the packet is written and flushed
+     */
+    public CompletableFuture<Void> sendMulticast(@NotNull final List<UUID> clientIds, @NotNull final byte[] payload) {
+        requireNonNull(clientIds, "clientIds cannot be null");
+        requireNonNull(payload, "payload cannot be null");
+        return sendPacket(new MulticastPacket(clientIds, payload));
     }
 
+    /**
+     * Sends an outbound packet ({@link WsOutPacket}) across the WebSocket channel.
+     *
+     * @param packet the packet to serialize and send
+     * @return a {@link CompletableFuture} completing when the packet is written and flushed
+     */
     public CompletableFuture<Void> sendPacket(@NotNull final WsOutPacket packet) {
+        requireNonNull(packet, "packet cannot be null");
         if (!isConnected()) {
             return CompletableFuture.failedFuture(new IllegalStateException("Client is not connected"));
         }
@@ -152,6 +243,11 @@ public final class DaianaClient implements AutoCloseable {
         return writeFuture;
     }
 
+    /**
+     * Disconnects the WebSocket channel and gracefully shuts down the managed {@link EventLoopGroup} if owned.
+     *
+     * @return a {@link CompletableFuture} completing when the disconnect process has finished
+     */
     public CompletableFuture<Void> disconnect() {
         CompletableFuture<Void> disconnectFuture = new CompletableFuture<>();
 
@@ -174,8 +270,11 @@ public final class DaianaClient implements AutoCloseable {
         }
     }
 
+    /**
+     * Closes this client synchronously by awaiting {@link #disconnect()}.
+     */
     @Override
-    public void close() throws Exception {
+    public void close() {
         disconnect().join();
     }
 }

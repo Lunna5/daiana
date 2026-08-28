@@ -8,10 +8,18 @@ import io.netty.handler.codec.http.websocketx.BinaryWebSocketFrame;
 
 import java.util.List;
 
+/**
+ * Netty outbound handler that encodes typed {@link WsOutPacket}s into {@link BinaryWebSocketFrame}s.
+ */
 public final class PacketEncoder extends MessageToMessageEncoder<WsOutPacket> {
 
+    /**
+     * Constructs a new {@link PacketEncoder}.
+     */
+    public PacketEncoder() {}
+
     @Override
-    protected void encode(ChannelHandlerContext ctx, WsOutPacket msg, List<Object> out) throws Exception {
+    protected void encode(ChannelHandlerContext ctx, WsOutPacket msg, List<Object> out) {
         ByteBuf buf = ctx.alloc().buffer();
         msg.writeToByteBuf(buf);
         out.add(new BinaryWebSocketFrame(buf));

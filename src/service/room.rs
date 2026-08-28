@@ -1,3 +1,5 @@
+//! Room creation REST endpoint and WebSocket upgrade handlers.
+
 use crate::channel::Client;
 use crate::packet::{WsInPacket, WsPacket};
 use crate::util::error::DaianaError;
@@ -11,6 +13,7 @@ use serde_json::json;
 use std::time::Instant;
 use uuid::Uuid;
 
+/// Creates a new room via `POST /room/` and returns its generated UUID in JSON format.
 #[post("/")]
 async fn create_room(state: Data<AppState>) -> impl Responder {
     let channel_manager = &state.channel_manager;
@@ -19,6 +22,7 @@ async fn create_room(state: Data<AppState>) -> impl Responder {
     HttpResponse::Ok().json(json!({ "id": id }))
 }
 
+/// Upgrades an incoming HTTP request to a WebSocket connection for the room identified by `{id}` (`GET /room/{id}`).
 #[get("/{id}")]
 async fn connect_ws(
     state: Data<AppState>,
@@ -183,6 +187,7 @@ async fn connect_ws(
     Ok(res)
 }
 
+/// Registers the room endpoints into the provided Actix [`Scope`].
 pub fn endpoints(scope: Scope) -> Scope {
     scope.service(create_room).service(connect_ws)
 }

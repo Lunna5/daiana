@@ -1,3 +1,5 @@
+//! Daiana server executable entry point.
+
 use actix_web::middleware::{Compress, Logger, NormalizePath, TrailingSlash};
 use actix_web::rt::time::sleep;
 use actix_web::web::Data;

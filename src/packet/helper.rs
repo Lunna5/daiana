@@ -1,9 +1,12 @@
+//! Helper functions for broadcasting, unicasting, multicasting, and peer synchronization.
+
 use crate::channel::ChannelManager;
 use crate::packet::out::WsPacket;
 use futures_util::future::join_all;
 use log::warn;
 use uuid::Uuid;
 
+/// Removes a client from the room and broadcasts a [`WsPacket::ClientDisconnected`] event to remaining peers.
 pub async fn disconnect_and_broadcast(
     channel_manager: &ChannelManager,
     room_id: Uuid,
@@ -22,6 +25,8 @@ pub async fn disconnect_and_broadcast(
     }
 }
 
+/// Broadcasts a [`WsPacket::ClientConnected`] event to all existing peers in the room
+/// and synchronizes the new client with the list of already connected peers.
 pub async fn connect_and_broadcast(
     channel_manager: &ChannelManager,
     room_id: Uuid,
@@ -39,6 +44,7 @@ pub async fn connect_and_broadcast(
     sync_existing_clients(channel_manager, room_id, client_id).await;
 }
 
+/// Sends [`WsPacket::ClientConnected`] events to `new_client_id` for each client already in the room.
 pub async fn sync_existing_clients(
     channel_manager: &ChannelManager,
     room_id: Uuid,
@@ -74,6 +80,10 @@ pub async fn sync_existing_clients(
     }
 }
 
+/// Broadcasts a [`WsPacket`] concurrently to all clients in a room, optionally excluding one client.
+///
+/// Any clients whose connection fails during transmission will be cleanly disconnected and their
+/// departure broadcast to the room.
 pub async fn broadcast_to_room(
     channel_manager: &ChannelManager,
     room_id: Uuid,
@@ -121,6 +131,7 @@ pub async fn broadcast_to_room(
     }
 }
 
+/// Sends a direct private [`WsPacket`] to a specific client in the room.
 pub async fn send_to_client(
     channel_manager: &ChannelManager,
     room_id: Uuid,
@@ -141,6 +152,7 @@ pub async fn send_to_client(
     }
 }
 
+/// Broadcasts a server system info message ([`WsPacket::ServerInfo`]) to all clients in the room.
 pub async fn send_server_info_to_room(
     channel_manager: &ChannelManager,
     room_id: Uuid,
@@ -153,6 +165,7 @@ pub async fn send_server_info_to_room(
     broadcast_to_room(channel_manager, room_id, &packet, None).await;
 }
 
+/// Sends a kick notification to a client, closes their WebSocket session, and disconnects them.
 pub async fn kick_client(
     channel_manager: &ChannelManager,
     room_id: Uuid,
@@ -171,6 +184,7 @@ pub async fn kick_client(
     disconnect_and_broadcast(channel_manager, room_id, client_id).await;
 }
 
+/// Multicasts a [`WsPacket`] concurrently to a specified subset of client UUIDs in the room.
 pub async fn multicast_to_clients(
     channel_manager: &ChannelManager,
     room_id: Uuid,

@@ -1,26 +1,35 @@
+//! Custom error types and HTTP response mappings.
+
 use actix_web::HttpResponse;
 use actix_web::body::BoxBody;
 use actix_web::http::{StatusCode, header};
 use derive_more::{Display, Error};
 use serde_json::json;
 
+/// Application errors that can occur during room management and WebSocket handling.
 #[derive(Debug, Display, Error)]
 pub enum DaianaError {
+    /// An unexpected internal server error occurred.
     #[display("internal error")]
     InternalError,
 
+    /// An invalid argument was supplied.
     #[display("invalid argument")]
     InvalidArgument,
 
+    /// An operation timed out.
     #[display("timeout")]
     Timeout,
 
+    /// The specified room UUID does not exist or is invalid.
     #[display("room not found or invalid")]
     InvalidRoomId,
 
+    /// Failed to initialize or upgrade the WebSocket connection.
     #[display("something failed while initialising the websocket connection")]
     Websocket,
 
+    /// The target room has reached its maximum client capacity.
     #[display("maximum clients on a room reached")]
     MaximumClientsReached,
 }

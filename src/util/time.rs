@@ -1,5 +1,8 @@
+//! System time helpers for timestamp calculation.
+
 use std::time::{SystemTime, UNIX_EPOCH};
 
+/// Returns the current UNIX timestamp in seconds.
 pub fn get_current_time_in_seconds() -> u64 {
     let start = SystemTime::now();
     let since_the_epoch = start

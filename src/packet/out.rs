@@ -1,3 +1,5 @@
+//! Outbound WebSocket packets sent by the server to connected clients (Server -> Client).
+
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use uuid::Uuid;
 
@@ -6,22 +8,50 @@ const OP_DISCONNECTED: u8 = 0x1;
 const OP_MESSAGE: u8 = 0x2;
 const OP_SERVER_INFO: u8 = 0x3;
 
+/// Errors that can occur when parsing raw binary WebSocket frames into packets.
 #[derive(Debug, PartialEq, Eq)]
 pub enum ParseError {
+    /// The leading opcode byte is not recognized.
     InvalidOpCode(u8),
+    /// The buffer contains fewer bytes than expected for the packet structure.
     IncompleteData,
+    /// String payload contains invalid UTF-8 byte sequences.
     InvalidUtf8,
 }
 
+/// Outbound packet transmitted to connected clients.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum WsPacket {
-    ClientConnected { client_id: Uuid },
-    ClientDisconnected { client_id: Uuid },
-    Message { sender_id: Uuid, payload: Bytes },
-    ServerInfo { message: String },
+    /// Notification that a new client connected to the room (Opcode 0x0).
+    /// Format: `[0x00][16B Client UUID]`
+    ClientConnected {
+        /// The UUID of the connected client.
+        client_id: Uuid,
+    },
+    /// Notification that a client disconnected from the room (Opcode 0x1).
+    /// Format: `[0x01][16B Client UUID]`
+    ClientDisconnected {
+        /// The UUID of the disconnected client.
+        client_id: Uuid,
+    },
+    /// Routed message payload from a verified client sender (Opcode 0x2).
+    /// Format: `[0x02][16B Sender UUID][Payload Bytes]`
+    Message {
+        /// The UUID of the sender assigned and verified by the server.
+        sender_id: Uuid,
+        /// The raw message payload bytes.
+        payload: Bytes,
+    },
+    /// Administrative or system message from the server (Opcode 0x3).
+    /// Format: `[0x03][UTF-8 Text Bytes]`
+    ServerInfo {
+        /// The text message.
+        message: String,
+    },
 }
 
 impl WsPacket {
+    /// Serializes this packet into a binary [`Bytes`] buffer.
     pub fn to_bytes(&self) -> Bytes {
         match self {
             WsPacket::ClientConnected { client_id } => {
@@ -53,6 +83,7 @@ impl WsPacket {
         }
     }
 
+    /// Deserializes a binary [`Bytes`] buffer into a [`WsPacket`].
     pub fn from_bytes(mut data: Bytes) -> Result<Self, ParseError> {
         if !data.has_remaining() {
             return Err(ParseError::IncompleteData);

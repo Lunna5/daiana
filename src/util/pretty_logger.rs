@@ -1,29 +1,37 @@
+//! Formatted console logger with emojis, colors, and aligned module targets.
+
 use std::fmt;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use env_logger::Builder;
 use log::Level;
 
+/// Initializes the pretty logger using `RUST_LOG` environment variable filter.
 pub fn init() {
     try_init().unwrap();
 }
 
+/// Initializes the pretty logger with millisecond timestamps enabled.
 pub fn init_timed() {
     try_init_timed().unwrap();
 }
 
+/// Attempts to initialize the pretty logger using the `RUST_LOG` environment variable.
 pub fn try_init() -> Result<(), log::SetLoggerError> {
     try_init_custom_env("RUST_LOG")
 }
 
+/// Attempts to initialize the timed pretty logger using the `RUST_LOG` environment variable.
 pub fn try_init_timed() -> Result<(), log::SetLoggerError> {
     try_init_timed_custom_env("RUST_LOG")
 }
 
+/// Initializes the logger reading filter directives from a custom environment variable name.
 pub fn init_custom_env(environment_variable_name: &str) {
     try_init_custom_env(environment_variable_name).unwrap();
 }
 
+/// Attempts to initialize the logger reading filter directives from a custom environment variable name.
 pub fn try_init_custom_env(environment_variable_name: &str) -> Result<(), log::SetLoggerError> {
     let mut builder = formatted_builder();
 
@@ -34,6 +42,7 @@ pub fn try_init_custom_env(environment_variable_name: &str) -> Result<(), log::S
     builder.try_init()
 }
 
+/// Attempts to initialize the timed logger reading filter directives from a custom environment variable name.
 pub fn try_init_timed_custom_env(
     environment_variable_name: &str,
 ) -> Result<(), log::SetLoggerError> {
@@ -46,6 +55,7 @@ pub fn try_init_timed_custom_env(
     builder.try_init()
 }
 
+/// Creates a new [`Builder`] pre-configured with emoji level formatting and aligned target padding.
 pub fn formatted_builder() -> Builder {
     let mut builder = Builder::new();
 
@@ -67,6 +77,7 @@ pub fn formatted_builder() -> Builder {
     builder
 }
 
+/// Creates a new [`Builder`] pre-configured with millisecond timestamps, emoji levels, and aligned targets.
 pub fn formatted_timed_builder() -> Builder {
     let mut builder = Builder::new();
 

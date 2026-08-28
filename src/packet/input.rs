@@ -1,3 +1,5 @@
+//! Inbound WebSocket packets received by the server from clients (Client -> Server).
+
 use crate::packet::ParseError;
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use uuid::Uuid;
@@ -6,22 +8,35 @@ const IN_OP_UNICAST: u8 = 0x0;
 const IN_OP_MULTICAST: u8 = 0x1;
 const IN_OP_BROADCAST: u8 = 0x2;
 
+/// Inbound binary packet parsed from a client connection.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum WsInPacket {
+    /// Private message directed to a single destination UUID (Opcode 0x0).
+    /// Format: `[0x00][16B Target UUID][Payload Bytes]`
     Unicast {
+        /// The target client's UUID.
         target_id: Uuid,
+        /// The raw message payload bytes.
         payload: Bytes,
     },
+    /// Targeted message directed to multiple destination UUIDs (Opcode 0x1).
+    /// Format: `[0x01][2B Count (u16)][N * 16B Target UUIDs][Payload Bytes]`
     Multicast {
+        /// List of target client UUIDs.
         target_ids: Vec<Uuid>,
+        /// The raw message payload bytes.
         payload: Bytes,
     },
+    /// Broadcast message delivered to all other clients in the room (Opcode 0x2).
+    /// Format: `[0x02][Payload Bytes]`
     Broadcast {
+        /// The raw message payload bytes.
         payload: Bytes,
     },
 }
 
 impl WsInPacket {
+    /// Serializes this packet into a binary [`Bytes`] buffer.
     pub fn to_bytes(&self) -> Bytes {
         match self {
             WsInPacket::Unicast { target_id, payload } => {
@@ -53,6 +68,10 @@ impl WsInPacket {
         }
     }
 
+    /// Deserializes a binary [`Bytes`] buffer into a [`WsInPacket`].
+    ///
+    /// Returns [`ParseError::IncompleteData`] if the buffer is truncated, or
+    /// [`ParseError::InvalidOpCode`] if the leading byte is unrecognized.
     pub fn from_bytes(mut data: Bytes) -> Result<Self, ParseError> {
         if !data.has_remaining() {
             return Err(ParseError::IncompleteData);
@@ -135,7 +154,7 @@ mod tests {
         let id2 = Uuid::new_v4();
         let mut buf = BytesMut::new();
         buf.put_u8(IN_OP_MULTICAST);
-        buf.put_u16(2); // 2 targets
+        buf.put_slice(&2u16.to_be_bytes()); // 2 targets
         buf.put_slice(id1.as_bytes());
         buf.put_slice(id2.as_bytes());
         buf.put_slice(b"group message");

@@ -1,3 +1,5 @@
+//! Thread-safe room (channel) registry and lifecycle manager.
+
 use crate::channel::{Channel, Client};
 use crate::util::error::DaianaError;
 use crate::util::time::get_current_time_in_seconds;
@@ -5,9 +7,12 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 use uuid::Uuid;
 
+/// Thread-safe manager holding all active channels in memory.
 #[derive(Debug)]
 pub struct ChannelManager {
+    /// Mutex-protected map of room UUIDs to [`Channel`] instances.
     pub channels: Mutex<HashMap<Uuid, Channel>>,
+    /// Maximum number of concurrent clients allowed per room.
     pub max_clients_on_room: u16,
 }
 
@@ -18,6 +23,7 @@ impl Default for ChannelManager {
 }
 
 impl ChannelManager {
+    /// Creates a new [`ChannelManager`], reading `MAX_CLIENTS_ON_CHANNEL` from the environment (default: 5).
     pub fn new() -> Self {
         Self {
             channels: Mutex::new(HashMap::new()),
@@ -28,6 +34,9 @@ impl ChannelManager {
         }
     }
 
+    /// Creates a new empty room with a randomly generated UUID and registers it.
+    ///
+    /// Returns the generated room [`Uuid`].
     pub fn create_channel(&self) -> Uuid {
         let id = Uuid::new_v4();
         let channel = Channel::new(id);
@@ -40,6 +49,7 @@ impl ChannelManager {
         id
     }
 
+    /// Checks if a room with the specified UUID currently exists.
     pub fn channel_exists(&self, id: Uuid) -> bool {
         self.channels
             .lock()
@@ -47,6 +57,7 @@ impl ChannelManager {
             .contains_key(&id)
     }
 
+    /// Marks a channel as active by resetting its inactivity timestamp to 0.
     pub fn mark_channel_as_active(&self, id: Uuid) -> Result<(), DaianaError> {
         let mut channels = self.channels.lock().expect("Unable to lock channel");
 
@@ -58,6 +69,7 @@ impl ChannelManager {
         }
     }
 
+    /// Marks a channel as inactive by recording the current timestamp.
     pub fn mark_channel_as_not_active(&self, id: Uuid) -> Result<(), DaianaError> {
         let mut channels = self.channels.lock().expect("Unable to lock channel");
         if let Some(channel) = channels.get_mut(&id) {
@@ -68,6 +80,10 @@ impl ChannelManager {
         }
     }
 
+    /// Adds a connected [`Client`] to the specified room.
+    ///
+    /// Returns [`DaianaError::MaximumClientsReached`] if the room is at capacity,
+    /// or [`DaianaError::InvalidRoomId`] if the room does not exist.
     pub fn insert_client(&self, id: Uuid, client: Client) -> Result<(), DaianaError> {
         let mut channels = self.channels.lock().expect("Unable to lock channel");
 
@@ -87,6 +103,7 @@ impl ChannelManager {
         }
     }
 
+    /// Retrieves a cloned list of all [`Client`]s currently in the room.
     pub fn get_clients(&self, id: Uuid) -> Result<Vec<Client>, DaianaError> {
         let channels = self.channels.lock().expect("Unable to lock channel");
 
@@ -97,6 +114,9 @@ impl ChannelManager {
         }
     }
 
+    /// Removes a client by UUID from the specified room.
+    ///
+    /// If the room becomes empty, its inactivity timer is started.
     pub fn remove_client(&self, channel_id: Uuid, client_id: Uuid) -> Result<(), DaianaError> {
         let mut channels = self.channels.lock().expect("Unable to lock channel");
 
@@ -112,6 +132,7 @@ impl ChannelManager {
         }
     }
 
+    /// Removes empty rooms whose inactivity duration exceeds `timeout_seconds`.
     pub fn clean_empty_channels(&self, timeout_seconds: u64) {
         let mut channels = self.channels.lock().expect("Unable to lock channel");
         let current_time = get_current_time_in_seconds();
@@ -135,6 +156,7 @@ impl ChannelManager {
         });
     }
 
+    /// Retrieves a specific client from a room by client UUID.
     pub fn get_client(
         &self,
         channel_id: Uuid,
@@ -151,6 +173,7 @@ impl ChannelManager {
         }
     }
 
+    /// Checks if a client with the given UUID exists in the specified room.
     pub fn client_exists(&self, channel_id: Uuid, client_id: Uuid) -> Result<bool, DaianaError> {
         let channels = self.channels.lock().expect("Unable to lock channel");
 
@@ -162,6 +185,7 @@ impl ChannelManager {
         }
     }
 
+    /// Clears all clients from a room and starts its inactivity timer.
     pub fn clear_clients(&self, channel_id: Uuid) -> Result<(), DaianaError> {
         let mut channels = self.channels.lock().expect("Unable to lock channel");
 

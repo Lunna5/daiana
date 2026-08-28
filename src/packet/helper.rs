@@ -1,7 +1,7 @@
 use futures_util::future::join_all;
 use crate::channel::ChannelManager;
 use uuid::Uuid;
-use log::{error, warn};
+use log::warn;
 use crate::packet::out::WsPacket;
 
 pub async fn disconnect_and_broadcast(
@@ -9,11 +9,11 @@ pub async fn disconnect_and_broadcast(
     room_id: Uuid,
     client_id: Uuid,
 ) {
-    let _ = channel_manager.remove_client(room_id, client_id);
-
-    let disconnect_packet = WsPacket::ClientDisconnected { client_id };
-
-    Box::pin(broadcast_to_room(channel_manager, room_id, &disconnect_packet, None)).await;
+    if let Ok(true) = channel_manager.client_exists(room_id, client_id) {
+        let _ = channel_manager.remove_client(room_id, client_id);
+        let disconnect_packet = WsPacket::ClientDisconnected { client_id };
+        Box::pin(broadcast_to_room(channel_manager, room_id, &disconnect_packet, None)).await;
+    }
 }
 
 pub async fn broadcast_to_room(
@@ -31,17 +31,19 @@ pub async fn broadcast_to_room(
 
     let mut send_tasks = Vec::new();
 
-    for mut client in clients {
+    for client in clients {
         if Some(client.id) == exclude_client {
             continue;
         }
 
         let bytes = bytes_to_send.clone();
+        let mut session = client.session;
+        let client_id = client.id;
 
         let task = async move {
-            if let Err(e) = client.session.binary(bytes).await {
-                warn!("Failed to send to {}: {}", client.id, e);
-                return Some(client.id);
+            if let Err(e) = session.binary(bytes).await {
+                warn!("Failed to send to {}: {}", client_id, e);
+                return Some(client_id);
             }
             None
         };
@@ -96,7 +98,7 @@ pub async fn kick_client(
     };
     send_to_client(channel_manager, room_id, client_id, &info_packet).await;
 
-    if let Ok(Some(mut client)) = channel_manager.get_client(room_id, client_id) {
+    if let Ok(Some(client)) = channel_manager.get_client(room_id, client_id) {
         let _ = client.session.close(None).await;
     }
 
@@ -122,14 +124,16 @@ pub async fn multicast_to_clients(
 
     let mut send_tasks = Vec::new();
 
-    for mut client in clients {
+    for client in clients {
         if target_ids.contains(&client.id) {
             let bytes = bytes_to_send.clone();
+            let mut session = client.session;
+            let client_id = client.id;
 
             let task = async move {
-                if let Err(e) = client.session.binary(bytes).await {
-                    log::warn!("Failed to multicast to {}: {}", client.id, e);
-                    return Some(client.id);
+                if let Err(e) = session.binary(bytes).await {
+                    log::warn!("Failed to multicast to {}: {}", client_id, e);
+                    return Some(client_id);
                 }
                 None
             };

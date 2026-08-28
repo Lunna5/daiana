@@ -138,3 +138,43 @@ impl ChannelManager {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_create_and_check_channel() {
+        let manager = ChannelManager::new();
+        let room_id = manager.create_channel();
+
+        assert!(manager.channel_exists(room_id));
+        assert!(!manager.channel_exists(Uuid::new_v4()));
+    }
+
+    #[test]
+    fn test_channel_active_status() {
+        let manager = ChannelManager::new();
+        let room_id = manager.create_channel();
+
+        assert!(manager.mark_channel_as_active(room_id).is_ok());
+        assert!(manager.mark_channel_as_not_active(room_id).is_ok());
+
+        let fake_id = Uuid::new_v4();
+        assert!(manager.mark_channel_as_active(fake_id).is_err());
+        assert!(manager.mark_channel_as_not_active(fake_id).is_err());
+    }
+
+    #[test]
+    fn test_operations_on_nonexistent_room() {
+        let manager = ChannelManager::new();
+        let fake_id = Uuid::new_v4();
+        let client_id = Uuid::new_v4();
+
+        assert!(matches!(manager.get_clients(fake_id), Err(DaianaError::InvalidRoomId)));
+        assert!(matches!(manager.get_client(fake_id, client_id), Err(DaianaError::InvalidRoomId)));
+        assert!(matches!(manager.client_exists(fake_id, client_id), Err(DaianaError::InvalidRoomId)));
+        assert!(matches!(manager.remove_client(fake_id, client_id), Err(DaianaError::InvalidRoomId)));
+        assert!(matches!(manager.clear_clients(fake_id), Err(DaianaError::InvalidRoomId)));
+    }
+}

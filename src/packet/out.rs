@@ -6,14 +6,14 @@ const OP_DISCONNECTED: u8 = 0x1;
 const OP_MESSAGE: u8 = 0x2;
 const OP_SERVER_INFO: u8 = 0x3;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum ParseError {
     InvalidOpCode(u8),
     IncompleteData,
     InvalidUtf8,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum WsPacket {
     ClientConnected {
         client_id: Uuid,
@@ -97,5 +97,90 @@ impl WsPacket {
             }
             _ => Err(ParseError::InvalidOpCode(opcode)),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_client_connected_roundtrip() {
+        let client_id = Uuid::new_v4();
+        let packet = WsPacket::ClientConnected { client_id };
+        let bytes = packet.to_bytes();
+        assert_eq!(bytes.len(), 17);
+        assert_eq!(bytes[0], OP_CONNECTED);
+
+        let parsed = WsPacket::from_bytes(bytes).expect("Failed to parse packet");
+        assert_eq!(parsed, packet);
+    }
+
+    #[test]
+    fn test_client_disconnected_roundtrip() {
+        let client_id = Uuid::new_v4();
+        let packet = WsPacket::ClientDisconnected { client_id };
+        let bytes = packet.to_bytes();
+        assert_eq!(bytes.len(), 17);
+        assert_eq!(bytes[0], OP_DISCONNECTED);
+
+        let parsed = WsPacket::from_bytes(bytes).expect("Failed to parse packet");
+        assert_eq!(parsed, packet);
+    }
+
+    #[test]
+    fn test_message_roundtrip() {
+        let sender_id = Uuid::new_v4();
+        let payload = Bytes::from_static(b"hello world payload");
+        let packet = WsPacket::Message {
+            sender_id,
+            payload: payload.clone(),
+        };
+        let bytes = packet.to_bytes();
+        assert_eq!(bytes[0], OP_MESSAGE);
+
+        let parsed = WsPacket::from_bytes(bytes).expect("Failed to parse message packet");
+        assert_eq!(parsed, packet);
+    }
+
+    #[test]
+    fn test_server_info_roundtrip() {
+        let message = "Welcome to the room!".to_string();
+        let packet = WsPacket::ServerInfo {
+            message: message.clone(),
+        };
+        let bytes = packet.to_bytes();
+        assert_eq!(bytes[0], OP_SERVER_INFO);
+
+        let parsed = WsPacket::from_bytes(bytes).expect("Failed to parse server info");
+        assert_eq!(parsed, packet);
+    }
+
+    #[test]
+    fn test_invalid_opcode() {
+        let data = Bytes::from_static(&[0xFF, 0x01, 0x02]);
+        let err = WsPacket::from_bytes(data).unwrap_err();
+        assert_eq!(err, ParseError::InvalidOpCode(0xFF));
+    }
+
+    #[test]
+    fn test_empty_data() {
+        let data = Bytes::new();
+        let err = WsPacket::from_bytes(data).unwrap_err();
+        assert_eq!(err, ParseError::IncompleteData);
+    }
+
+    #[test]
+    fn test_truncated_uuid() {
+        let data = Bytes::from_static(&[OP_CONNECTED, 1, 2, 3]);
+        let err = WsPacket::from_bytes(data).unwrap_err();
+        assert_eq!(err, ParseError::IncompleteData);
+    }
+
+    #[test]
+    fn test_invalid_utf8_server_info() {
+        let data = Bytes::from_static(&[OP_SERVER_INFO, 0xFF, 0xFE]);
+        let err = WsPacket::from_bytes(data).unwrap_err();
+        assert_eq!(err, ParseError::InvalidUtf8);
     }
 }

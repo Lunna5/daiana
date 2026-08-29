@@ -1,6 +1,8 @@
 package dev.lunna.daiana4j;
 
+import io.netty.handler.ssl.SslContext;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
 
@@ -9,7 +11,7 @@ import static java.util.Objects.requireNonNull;
 /**
  * Configuration options for the {@link DaianaClient}.
  * <p>
- * Allows tuning Netty buffer limits, frame sizes, and connection/handshake timeouts.
+ * Allows tuning Netty buffer limits, frame sizes, connection/handshake timeouts, and SSL/TLS settings.
  */
 public final class DaianaClientOptions {
 
@@ -30,6 +32,7 @@ public final class DaianaClientOptions {
     private int maxFramePayloadLength = DEFAULT_MAX_CONTENT_LENGTH;
     private Duration connectionTimeout = DEFAULT_CONNECTION_TIMEOUT;
     private Duration handshakeTimeout = DEFAULT_HANDSHAKE_TIMEOUT;
+    private SslContext sslContext;
 
     /**
      * Constructs default {@link DaianaClientOptions}.
@@ -124,6 +127,26 @@ public final class DaianaClientOptions {
     public DaianaClientOptions setHandshakeTimeout(@NotNull Duration handshakeTimeout) {
         requireNonNull(handshakeTimeout, "handshakeTimeout cannot be null");
         this.handshakeTimeout = handshakeTimeout;
+        return this;
+    }
+
+    /**
+     * Returns the custom {@link SslContext}, or {@code null} if default client SSL context should be used for {@code wss://}.
+     *
+     * @return the configured {@link SslContext} or {@code null}
+     */
+    public @Nullable SslContext getSslContext() {
+        return sslContext;
+    }
+
+    /**
+     * Sets a custom {@link SslContext} to be used for secure WebSocket ({@code wss://}) connections.
+     *
+     * @param sslContext the custom {@link SslContext}
+     * @return this options instance for chaining
+     */
+    public DaianaClientOptions setSslContext(@Nullable SslContext sslContext) {
+        this.sslContext = sslContext;
         return this;
     }
 }

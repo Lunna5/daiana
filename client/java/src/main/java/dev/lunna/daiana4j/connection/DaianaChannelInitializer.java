@@ -12,8 +12,11 @@ import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.websocketx.WebSocketClientProtocolConfig;
 import io.netty.handler.codec.http.websocketx.WebSocketClientProtocolHandler;
 import io.netty.handler.codec.http.websocketx.WebSocketVersion;
+import io.netty.handler.ssl.SslContext;
+import io.netty.handler.ssl.SslContextBuilder;
 import org.jetbrains.annotations.NotNull;
 
+import javax.net.ssl.SSLException;
 import java.net.URI;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -21,7 +24,7 @@ import java.util.concurrent.CompletableFuture;
 import static java.util.Objects.requireNonNull;
 
 /**
- * Netty {@link ChannelInitializer} configuring the HTTP and WebSocket pipeline for Daiana communication.
+ * Netty {@link ChannelInitializer} configuring the HTTP, TLS/SSL, and WebSocket pipeline for Daiana communication.
  */
 public final class DaianaChannelInitializer extends ChannelInitializer<SocketChannel> {
     private final URI uri;
@@ -54,14 +57,28 @@ public final class DaianaChannelInitializer extends ChannelInitializer<SocketCha
     }
 
     @Override
-    protected void initChannel(SocketChannel ch) {
+    protected void initChannel(SocketChannel ch) throws SSLException {
         ChannelPipeline pipeline = ch.pipeline();
 
-        // 1. Base HTTP codecs
+        // 1. SSL/TLS Handler for secure WebSocket connections (wss:// or https://)
+        String scheme = uri.getScheme() == null ? "ws" : uri.getScheme();
+        boolean isSsl = "wss".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme);
+
+        if (isSsl) {
+            SslContext sslContext = options.getSslContext();
+            if (sslContext == null) {
+                sslContext = SslContextBuilder.forClient().build();
+            }
+            String host = uri.getHost();
+            int port = uri.getPort() == -1 ? 443 : uri.getPort();
+            pipeline.addLast("ssl", sslContext.newHandler(ch.alloc(), host, port));
+        }
+
+        // 2. Base HTTP codecs
         pipeline.addLast("http-codec", new HttpClientCodec());
         pipeline.addLast("http-aggregator", new HttpObjectAggregator(options.getMaxContentLength()));
 
-        // 2. Netty WebSocket client protocol handler
+        // 3. Netty WebSocket client protocol handler
         WebSocketClientProtocolConfig wsConfig = WebSocketClientProtocolConfig.newBuilder()
                 .webSocketUri(uri)
                 .version(WebSocketVersion.V13)
@@ -73,11 +90,11 @@ public final class DaianaChannelInitializer extends ChannelInitializer<SocketCha
 
         pipeline.addLast("ws-protocol", new WebSocketClientProtocolHandler(wsConfig));
 
-        // 3. Daiana binary packet codecs
+        // 4. Daiana binary packet codecs
         pipeline.addLast("packet-encoder", new PacketEncoder());
         pipeline.addLast("packet-decoder", new PacketDecoder());
 
-        // 4. Daiana event handler
+        // 5. Daiana event handler
         pipeline.addLast("daiana-handler", new DianaClientHandler(listeners, handshakeFuture));
     }
 }

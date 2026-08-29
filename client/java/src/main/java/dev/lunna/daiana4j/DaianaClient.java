@@ -244,6 +244,16 @@ public final class DaianaClient implements AutoCloseable {
     }
 
     /**
+     * Returns the WebSocket URI of the room this client is connected to.
+     *
+     * @return the WebSocket URI
+     */
+    @NotNull
+    public URI getUri() {
+        return uri;
+    }
+
+    /**
      * Disconnects the WebSocket channel and gracefully shuts down the managed {@link EventLoopGroup} if owned.
      *
      * @return a {@link CompletableFuture} completing when the disconnect process has finished

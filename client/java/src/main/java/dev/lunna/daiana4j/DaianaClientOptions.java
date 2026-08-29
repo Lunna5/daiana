@@ -11,7 +11,7 @@ import static java.util.Objects.requireNonNull;
 /**
  * Configuration options for the {@link DaianaClient}.
  * <p>
- * Allows tuning Netty buffer limits, frame sizes, connection/handshake timeouts, and SSL/TLS settings.
+ * Allows tuning Netty buffer limits, frame sizes, connection/handshake timeouts, heartbeat intervals, and SSL/TLS settings.
  */
 public final class DaianaClientOptions {
 
@@ -28,10 +28,14 @@ public final class DaianaClientOptions {
     /** Default WebSocket handshake timeout (10 seconds). */
     public static final Duration DEFAULT_HANDSHAKE_TIMEOUT = Duration.ofSeconds(10);
 
+    /** Default heartbeat ping interval (25 seconds). */
+    public static final Duration DEFAULT_HEARTBEAT_INTERVAL = Duration.ofSeconds(25);
+
     private int maxContentLength = DEFAULT_MAX_CONTENT_LENGTH;
     private int maxFramePayloadLength = DEFAULT_MAX_CONTENT_LENGTH;
     private Duration connectionTimeout = DEFAULT_CONNECTION_TIMEOUT;
     private Duration handshakeTimeout = DEFAULT_HANDSHAKE_TIMEOUT;
+    private Duration heartbeatInterval = DEFAULT_HEARTBEAT_INTERVAL;
     private SslContext sslContext;
 
     /**
@@ -127,6 +131,28 @@ public final class DaianaClientOptions {
     public DaianaClientOptions setHandshakeTimeout(@NotNull Duration handshakeTimeout) {
         requireNonNull(handshakeTimeout, "handshakeTimeout cannot be null");
         this.handshakeTimeout = handshakeTimeout;
+        return this;
+    }
+
+    /**
+     * Returns the heartbeat ping interval.
+     *
+     * @return the heartbeat interval (or {@link Duration#ZERO} if disabled)
+     */
+    public Duration getHeartbeatInterval() {
+        return heartbeatInterval;
+    }
+
+    /**
+     * Sets the heartbeat ping interval to keep WebSocket connections alive through proxies.
+     * Use {@link Duration#ZERO} to disable automatic heartbeats.
+     *
+     * @param heartbeatInterval the heartbeat interval
+     * @return this options instance for chaining
+     */
+    public DaianaClientOptions setHeartbeatInterval(@NotNull Duration heartbeatInterval) {
+        requireNonNull(heartbeatInterval, "heartbeatInterval cannot be null");
+        this.heartbeatInterval = heartbeatInterval;
         return this;
     }
 

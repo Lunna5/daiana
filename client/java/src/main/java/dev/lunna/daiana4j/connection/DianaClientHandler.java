@@ -4,7 +4,10 @@ import dev.lunna.daiana4j.listener.DaianaListener;
 import dev.lunna.daiana4j.protocol.in.*;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
+import io.netty.handler.codec.http.websocketx.PingWebSocketFrame;
 import io.netty.handler.codec.http.websocketx.WebSocketClientProtocolHandler;
+import io.netty.handler.timeout.IdleState;
+import io.netty.handler.timeout.IdleStateEvent;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
@@ -14,8 +17,8 @@ import static java.util.Objects.requireNonNull;
 
 /**
  * Netty inbound handler that handles the WebSocket handshake completion event,
- * dispatches decoded {@link WsInPacket}s to registered {@link DaianaListener}s,
- * and handles connection lifecycle events.
+ * heartbeat keep-alive pings, packet routing to registered {@link DaianaListener}s,
+ * and connection lifecycle events.
  */
 public final class DianaClientHandler extends SimpleChannelInboundHandler<WsInPacket> {
     private final List<DaianaListener> listeners;
@@ -34,6 +37,15 @@ public final class DianaClientHandler extends SimpleChannelInboundHandler<WsInPa
 
     @Override
     public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
+        // Handle heartbeat idle event: send Ping frame to keep connection alive through reverse proxies
+        if (evt instanceof IdleStateEvent event) {
+            if (event.state() == IdleState.WRITER_IDLE) {
+                ctx.writeAndFlush(new PingWebSocketFrame());
+                return;
+            }
+        }
+
+        // Handle WebSocket handshake complete event
         if (evt instanceof WebSocketClientProtocolHandler.ClientHandshakeStateEvent event) {
             if (event == WebSocketClientProtocolHandler.ClientHandshakeStateEvent.HANDSHAKE_COMPLETE) {
                 handshakeFuture.complete(null);

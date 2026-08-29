@@ -14,6 +14,7 @@ import io.netty.handler.codec.http.websocketx.WebSocketClientProtocolHandler;
 import io.netty.handler.codec.http.websocketx.WebSocketVersion;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
+import io.netty.handler.timeout.IdleStateHandler;
 import org.jetbrains.annotations.NotNull;
 
 import javax.net.ssl.SSLException;
@@ -24,7 +25,7 @@ import java.util.concurrent.CompletableFuture;
 import static java.util.Objects.requireNonNull;
 
 /**
- * Netty {@link ChannelInitializer} configuring the HTTP, TLS/SSL, and WebSocket pipeline for Daiana communication.
+ * Netty {@link ChannelInitializer} configuring the HTTP, TLS/SSL, Heartbeat, and WebSocket pipeline for Daiana communication.
  */
 public final class DaianaChannelInitializer extends ChannelInitializer<SocketChannel> {
     private final URI uri;
@@ -78,7 +79,12 @@ public final class DaianaChannelInitializer extends ChannelInitializer<SocketCha
         pipeline.addLast("http-codec", new HttpClientCodec());
         pipeline.addLast("http-aggregator", new HttpObjectAggregator(options.getMaxContentLength()));
 
-        // 3. Netty WebSocket client protocol handler
+        // 3. Heartbeat / Idle state handler (sends Ping frames during write inactivity to prevent proxy drop)
+        if (options.getHeartbeatInterval() != null && !options.getHeartbeatInterval().isZero()) {
+            pipeline.addLast("idle-state-handler", new IdleStateHandler(0, (int) options.getHeartbeatInterval().toSeconds(), 0));
+        }
+
+        // 4. Netty WebSocket client protocol handler
         WebSocketClientProtocolConfig wsConfig = WebSocketClientProtocolConfig.newBuilder()
                 .webSocketUri(uri)
                 .version(WebSocketVersion.V13)
@@ -90,11 +96,11 @@ public final class DaianaChannelInitializer extends ChannelInitializer<SocketCha
 
         pipeline.addLast("ws-protocol", new WebSocketClientProtocolHandler(wsConfig));
 
-        // 4. Daiana binary packet codecs
+        // 5. Daiana binary packet codecs
         pipeline.addLast("packet-encoder", new PacketEncoder());
         pipeline.addLast("packet-decoder", new PacketDecoder());
 
-        // 5. Daiana event handler
+        // 6. Daiana event handler
         pipeline.addLast("daiana-handler", new DianaClientHandler(listeners, handshakeFuture));
     }
 }

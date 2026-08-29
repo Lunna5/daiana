@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "dev.lunna"
-version = "0.0.4"
+version = "0.1.0"
 
 java {
     toolchain { languageVersion = JavaLanguageVersion.of(25) }

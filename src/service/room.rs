@@ -19,7 +19,9 @@ async fn create_room(state: Data<AppState>) -> impl Responder {
     let channel_manager = &state.channel_manager;
     let id = channel_manager.create_channel();
 
-    HttpResponse::Ok().json(json!({ "id": id }))
+    HttpResponse::Ok()
+        .insert_header(("Location", format!("/room/{}", id)))
+        .json(json!({ "id": id }))
 }
 
 /// Upgrades an incoming HTTP request to a WebSocket connection for the room identified by `{id}` (`GET /room/{id}`).

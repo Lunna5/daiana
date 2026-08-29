@@ -1,0 +1,49 @@
+{
+  "name": "daiana4ts",
+  "version": "0.1.0",
+  "description": "High-performance TypeScript/JavaScript client for the Daiana room-based binary WebSocket relay server.",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": [
+    "daiana",
+    "websocket",
+    "binary",
+    "relay",
+    "p2p",
+    "multiplayer",
+    "realtime",
+    "typescript"
+  ],
+  "author": "Lunna Martín González <git@lunna.dev>",
+  "license": "AGPL-3.0-only",
+  "devDependencies": {
+    "tsup": "^8.4.0",
+    "typescript": "^5.8.2",
+    "vitest": "^3.0.8"
+  },
+  "packageManager": "pnpm@11.24.0"
+}

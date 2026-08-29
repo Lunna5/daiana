@@ -13,10 +13,10 @@
 use crate::channel::ChannelManager;
 
 pub mod channel;
+pub mod config;
 pub mod packet;
 pub mod service;
 pub mod util;
-
 /// Shared application state managed by Actix-web.
 ///
 /// Contains the channel manager instance and server-wide rate limiting / packet size limits.

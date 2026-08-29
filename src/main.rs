@@ -1,10 +1,11 @@
 //! Daiana server executable entry point.
 
-use actix_web::middleware::{Compress, Logger, NormalizePath, TrailingSlash};
+use actix_web::middleware::{Compress, Condition, Logger, NormalizePath, TrailingSlash};
 use actix_web::rt::time::sleep;
 use actix_web::web::Data;
 use actix_web::{App, HttpServer, rt, web};
 use daiana::channel::ChannelManager;
+use daiana::config::cors::{CorsSettings, cors_from_settings};
 use daiana::util::pretty_logger;
 use daiana::{AppState, service};
 use log::{debug, info};
@@ -30,10 +31,19 @@ async fn main() -> std::io::Result<()> {
         .and_then(|s| s.parse().ok())
         .unwrap_or(65_536); // Default 64 KiB
 
+    let cors_settings = CorsSettings::from_env();
+    let cors_enabled = cors_settings.is_some();
+
     info!("Initializing daiana...");
     debug!("Debug mode enabled");
     debug!("Rate limit: {} packets/sec per client", max_packets_per_sec);
     debug!("Max packet size: {} bytes", max_packet_size_bytes);
+
+    if cors_enabled {
+        info!("CORS enabled");
+    } else {
+        info!("CORS disabled by default");
+    }
 
     let app_state = Data::new(AppState {
         channel_manager: ChannelManager::new(),
@@ -56,7 +66,13 @@ async fn main() -> std::io::Result<()> {
     });
 
     HttpServer::new(move || {
+        let cors_middleware = cors_settings
+            .as_ref()
+            .map(cors_from_settings)
+            .unwrap_or_default();
+
         let mut app = App::new()
+            .wrap(Condition::new(cors_enabled, cors_middleware))
             .wrap(Compress::default())
             .wrap(NormalizePath::new(TrailingSlash::MergeOnly))
             .wrap(Logger::default());
@@ -64,6 +80,7 @@ async fn main() -> std::io::Result<()> {
         app = app.app_data(app_state.clone());
 
         app = app.service(service::room::endpoints(web::scope("/room")));
+        app = app.service(service::stat::endpoints(web::scope("/stat")));
         app = app.service(service::health::endpoints(web::scope("")));
         app
     })

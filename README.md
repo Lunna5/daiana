@@ -56,6 +56,7 @@ The server emits binary frames formatted as follows:
 | Method | Endpoint | Description | Response Example |
 | :--- | :--- | :--- | :--- |
 | `GET` | `/` | Health check & version information. | `{"ping": "pong", "version": "0.1.0"}` |
+| `GET` | `/stat/` | Active rooms and connected clients statistics. | `{"active_rooms": 1, "active_clients": 2}` |
 | `POST` | `/room/` | Creates a new room. | `{"id": "c1f7b889-4e78-4389-9407-73d8b28cf998"}` |
 | `GET` | `/room/{id}` | Upgrades the HTTP connection to WebSocket. | WebSocket Handshake (`101 Switching Protocols`) |
 
@@ -81,6 +82,13 @@ MAX_PACKETS_PER_SEC=100
 
 # Maximum packet payload size in bytes (default: 65536 / 64KiB)
 MAX_PACKET_SIZE_BYTES=65536
+
+# CORS Configuration (Disabled by default if omitted or ENABLE_CORS=false)
+# ENABLE_CORS=true
+# CORS_ORIGINS=*
+# CORS_METHODS=GET,POST,OPTIONS
+# CORS_HEADERS=Authorization,Accept,Content-Type
+# CORS_MAX_AGE=3600
 
 # Log level filter (trace, debug, info, warn, error)
 RUST_LOG=info
@@ -120,6 +128,8 @@ services:
       - MAX_PACKETS_PER_SEC=100
       - MAX_PACKET_SIZE_BYTES=65536
       - RUST_LOG=info
+      # - ENABLE_CORS=true
+      # - CORS_ORIGINS=*
 ```
 
 Run with:

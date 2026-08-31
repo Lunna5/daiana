@@ -188,6 +188,24 @@ Both examples automate:
 4. Sending **Broadcast**, **Unicast**, and **Multicast** binary packets.
 5. Verifying packet reception and disconnecting cleanly.
 
+### 4. Load Testing & Benchmarks ⚡
+
+Daiana includes a high-performance, asynchronous load-testing and latency-benchmarking suite built in Rust:
+
+```bash
+# Run default benchmark (40 clients across 10 rooms):
+cargo run --release --example benchmark
+
+# Run automated multi-scenario benchmark matrix:
+cargo run --release --example benchmark -- --suite
+
+# Run saturation / ramp-up flow test:
+cargo run --release --example benchmark -- --ramp
+
+# Custom parameters (e.g. 500 clients, 125 rooms, 25 pkts/s, 10 seconds):
+cargo run --release --example benchmark -- --rooms 125 --clients-per-room 4 --rate 25 --duration 10
+```
+
 ---
 
 ## 📄 License

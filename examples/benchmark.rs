@@ -537,9 +537,7 @@ pub async fn run_benchmark(
     })
 }
 
-fn calculate_latency_stats(
-    samples: &[u64],
-) -> (f64, f64, f64, f64, f64, f64, f64, f64, f64) {
+fn calculate_latency_stats(samples: &[u64]) -> (f64, f64, f64, f64, f64, f64, f64, f64, f64) {
     if samples.is_empty() {
         return (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
     }
@@ -589,12 +587,16 @@ fn format_latency(us: f64) -> String {
 }
 
 pub fn print_result_card(res: &BenchmarkResult) {
-    println!("\x1b[1;36m┌────────────────────────────────────────────────────────────────────────────┐\x1b[0m");
+    println!(
+        "\x1b[1;36m┌────────────────────────────────────────────────────────────────────────────┐\x1b[0m"
+    );
     println!(
         "\x1b[1;36m│\x1b[0m \x1b[1;33mBENCHMARK RESULT: {:<57}\x1b[0m\x1b[1;36m│\x1b[0m",
         res.name
     );
-    println!("\x1b[1;36m├────────────────────────────────────────────────────────────────────────────┤\x1b[0m");
+    println!(
+        "\x1b[1;36m├────────────────────────────────────────────────────────────────────────────┤\x1b[0m"
+    );
     println!(
         "│ \x1b[1mTopology:\x1b[0m        {:>4} Clients ({:>3} rooms × {:>2} clients) | Mode: {:<12}│",
         res.total_clients,
@@ -604,33 +606,33 @@ pub fn print_result_card(res: &BenchmarkResult) {
     );
     println!(
         "│ \x1b[1mPayload:\x1b[0m         {:>4} Bytes  | Target Rate/Client: {:>4} pkt/s | Time: {:>4.1}s   │",
-        res.payload_size,
-        res.target_rate_per_client,
-        res.duration_secs
+        res.payload_size, res.target_rate_per_client, res.duration_secs
     );
     println!(
         "│ \x1b[1mConnection:\x1b[0m      {:>4} Connected in {:>6.2} ms (Errors: {:>2})                   │",
         res.clients_connected, res.connect_duration_ms, res.connection_errors
     );
-    println!("\x1b[1;36m├────────────────────────────────────────────────────────────────────────────┤\x1b[0m");
+    println!(
+        "\x1b[1;36m├────────────────────────────────────────────────────────────────────────────┤\x1b[0m"
+    );
     println!(
         "│ \x1b[1;32mThroughput (Ingress):\x1b[0m   {:>10.1} pkts/sec  | {:>7.2} MB/sec ({:>8} pkts)│",
-        res.send_rate_pps,
-        res.send_bandwidth_mbps,
-        res.sent_packets
+        res.send_rate_pps, res.send_bandwidth_mbps, res.sent_packets
     );
     println!(
         "│ \x1b[1;32mThroughput (Egress):\x1b[0m    {:>10.1} pkts/sec  | {:>7.2} MB/sec ({:>8} pkts)│",
-        res.recv_rate_pps,
-        res.recv_bandwidth_mbps,
-        res.received_packets
+        res.recv_rate_pps, res.recv_bandwidth_mbps, res.received_packets
     );
     println!(
         "│ \x1b[1mDelivery Ratio:\x1b[0m        {:>9.2}% (Received {} of {} expected)    │",
         res.delivery_ratio_pct, res.received_packets, res.expected_recv_packets
     );
-    println!("\x1b[1;36m├────────────────────────────────────────────────────────────────────────────┤\x1b[0m");
-    println!("│ \x1b[1;35mEnd-to-End Latency Percentiles:\x1b[0m                                            │");
+    println!(
+        "\x1b[1;36m├────────────────────────────────────────────────────────────────────────────┤\x1b[0m"
+    );
+    println!(
+        "│ \x1b[1;35mEnd-to-End Latency Percentiles:\x1b[0m                                            │"
+    );
     println!(
         "│   Min:  {:<10} │ Mean: {:<10} │ p50 (Med): {:<10}             │",
         format_latency(res.min_latency_us),
@@ -649,26 +651,53 @@ pub fn print_result_card(res: &BenchmarkResult) {
         format_latency(res.max_latency_us),
         format_latency(res.stddev_latency_us)
     );
-    println!("\x1b[1;36m└────────────────────────────────────────────────────────────────────────────┘\x1b[0m\n");
+    println!(
+        "\x1b[1;36m└────────────────────────────────────────────────────────────────────────────┘\x1b[0m\n"
+    );
 }
 
 pub fn print_comparison_table(results: &[BenchmarkResult]) {
-    println!("\n\x1b[1;36m========================================================================================================================\x1b[0m");
-    println!("\x1b[1;36m                                          DAIANA BENCHMARK COMPARATIVE SUMMARY                                          \x1b[0m");
-    println!("\x1b[1;36m========================================================================================================================\x1b[0m");
+    println!(
+        "\n\x1b[1;36m========================================================================================================================\x1b[0m"
+    );
+    println!(
+        "\x1b[1;36m                                          DAIANA BENCHMARK COMPARATIVE SUMMARY                                          \x1b[0m"
+    );
+    println!(
+        "\x1b[1;36m========================================================================================================================\x1b[0m"
+    );
     println!(
         "\x1b[1m{:<22} {:>7} {:>6} {:>8} {:>12} {:>12} {:>10} {:>9} {:>9} {:>8}\x1b[0m",
-        "Scenario", "Clients", "Rooms", "Rate/Cli", "Ingress pkt/s", "Egress pkt/s", "Bandwidth", "p50 Lat", "p99 Lat", "Delivery"
+        "Scenario",
+        "Clients",
+        "Rooms",
+        "Rate/Cli",
+        "Ingress pkt/s",
+        "Egress pkt/s",
+        "Bandwidth",
+        "p50 Lat",
+        "p99 Lat",
+        "Delivery"
     );
-    println!("------------------------------------------------------------------------------------------------------------------------");
+    println!(
+        "------------------------------------------------------------------------------------------------------------------------"
+    );
     for r in results {
         let total_bw = r.send_bandwidth_mbps + r.recv_bandwidth_mbps;
         println!(
             "{:<22} {:>7} {:>6} {:>8} {:>12.0} {:>12.0} {:>8.2} MB/s {:>9} {:>9} {:>7.1}%",
-            if r.name.len() > 22 { &r.name[..22] } else { &r.name },
+            if r.name.len() > 22 {
+                &r.name[..22]
+            } else {
+                &r.name
+            },
             r.total_clients,
             r.total_rooms,
-            if r.target_rate_per_client == 0 { "MAX".to_string() } else { format!("{} p/s", r.target_rate_per_client) },
+            if r.target_rate_per_client == 0 {
+                "MAX".to_string()
+            } else {
+                format!("{} p/s", r.target_rate_per_client)
+            },
             r.send_rate_pps,
             r.recv_rate_pps,
             total_bw,
@@ -677,23 +706,91 @@ pub fn print_comparison_table(results: &[BenchmarkResult]) {
             r.delivery_ratio_pct
         );
     }
-    println!("\x1b[1;36m========================================================================================================================\x1b[0m\n");
+    println!(
+        "\x1b[1;36m========================================================================================================================\x1b[0m\n"
+    );
 }
 
 pub async fn run_test_suite(config: &BenchmarkConfig) -> Result<(), Box<dyn std::error::Error>> {
-    println!("\x1b[1;32m🚀 Running Comprehensive Multi-Scenario Benchmark Suite for Daiana...\x1b[0m\n");
+    println!(
+        "\x1b[1;32m🚀 Running Comprehensive Multi-Scenario Benchmark Suite for Daiana...\x1b[0m\n"
+    );
 
     let mut results = Vec::new();
 
     let scenarios = vec![
-        ("1. Low Load Baseline", 5, 2, 10, 64, 4, RoutingMode::Broadcast),
-        ("2. Room Concurrency (20 Rooms)", 20, 3, 20, 64, 4, RoutingMode::Broadcast),
-        ("3. High Client Count (100 Clients)", 25, 4, 30, 64, 4, RoutingMode::Broadcast),
-        ("4. High Rate Flow (80 pkt/s)", 10, 4, 80, 128, 4, RoutingMode::Broadcast),
-        ("5. Medium Payload (1 KB)", 10, 4, 30, 1024, 4, RoutingMode::Broadcast),
-        ("6. Large Payload (8 KB)", 5, 4, 20, 8192, 4, RoutingMode::Broadcast),
-        ("7. Unicast Direct Routing", 15, 4, 40, 64, 4, RoutingMode::Unicast),
-        ("8. Max Flow / Burst Mode", 10, 4, 0, 64, 4, RoutingMode::Broadcast),
+        (
+            "1. Low Load Baseline",
+            5,
+            2,
+            10,
+            64,
+            4,
+            RoutingMode::Broadcast,
+        ),
+        (
+            "2. Room Concurrency (20 Rooms)",
+            20,
+            3,
+            20,
+            64,
+            4,
+            RoutingMode::Broadcast,
+        ),
+        (
+            "3. High Client Count (100 Clients)",
+            25,
+            4,
+            30,
+            64,
+            4,
+            RoutingMode::Broadcast,
+        ),
+        (
+            "4. High Rate Flow (80 pkt/s)",
+            10,
+            4,
+            80,
+            128,
+            4,
+            RoutingMode::Broadcast,
+        ),
+        (
+            "5. Medium Payload (1 KB)",
+            10,
+            4,
+            30,
+            1024,
+            4,
+            RoutingMode::Broadcast,
+        ),
+        (
+            "6. Large Payload (8 KB)",
+            5,
+            4,
+            20,
+            8192,
+            4,
+            RoutingMode::Broadcast,
+        ),
+        (
+            "7. Unicast Direct Routing",
+            15,
+            4,
+            40,
+            64,
+            4,
+            RoutingMode::Unicast,
+        ),
+        (
+            "8. Max Flow / Burst Mode",
+            10,
+            4,
+            0,
+            64,
+            4,
+            RoutingMode::Broadcast,
+        ),
     ];
 
     for (name, rooms, clients_per_room, rate, payload_size, duration, mode) in scenarios {
@@ -705,9 +802,18 @@ pub async fn run_test_suite(config: &BenchmarkConfig) -> Result<(), Box<dyn std:
         sc_config.duration_secs = duration;
         sc_config.mode = mode;
 
-        print!("👉 Running \x1b[1;33m{}\x1b[0m ({} clients, rate: {} pkt/s)... ", name, rooms * clients_per_room, rate);
+        print!(
+            "👉 Running \x1b[1;33m{}\x1b[0m ({} clients, rate: {} pkt/s)... ",
+            name,
+            rooms * clients_per_room,
+            rate
+        );
         let res = run_benchmark(name, &sc_config).await?;
-        println!("\x1b[32mDONE\x1b[0m (Egress: \x1b[1m{:.0} pkt/s\x1b[0m, p50: \x1b[1m{}\x1b[0m)", res.recv_rate_pps, format_latency(res.p50_latency_us));
+        println!(
+            "\x1b[32mDONE\x1b[0m (Egress: \x1b[1m{:.0} pkt/s\x1b[0m, p50: \x1b[1m{}\x1b[0m)",
+            res.recv_rate_pps,
+            format_latency(res.p50_latency_us)
+        );
         print_result_card(&res);
         results.push(res);
 
@@ -740,7 +846,9 @@ pub async fn run_ramp_test(config: &BenchmarkConfig) -> Result<(), Box<dyn std::
         let res = run_benchmark(&label, &sc_config).await?;
         println!(
             "\x1b[32mDONE\x1b[0m -> Ingress: \x1b[1m{:.0} pkt/s\x1b[0m, Egress: \x1b[1m{:.0} pkt/s\x1b[0m, p99 Latency: \x1b[1m{}\x1b[0m",
-            res.send_rate_pps, res.recv_rate_pps, format_latency(res.p99_latency_us)
+            res.send_rate_pps,
+            res.recv_rate_pps,
+            format_latency(res.p99_latency_us)
         );
         results.push(res);
         tokio::time::sleep(Duration::from_millis(300)).await;
@@ -751,7 +859,8 @@ pub async fn run_ramp_test(config: &BenchmarkConfig) -> Result<(), Box<dyn std::
 }
 
 fn print_help() {
-    println!(r#"
+    println!(
+        r#"
 Daiana WebSocket Benchmark & Load Testing Tool
 
 USAGE:
@@ -789,7 +898,8 @@ EXAMPLES:
 
     # Auto-spawn in-process server with uncapped rate limits:
     cargo run --release --example benchmark -- --spawn-server --suite
-"#);
+"#
+    );
 }
 
 fn parse_cli_args() -> (BenchmarkConfig, bool, bool) {
@@ -885,9 +995,15 @@ fn parse_cli_args() -> (BenchmarkConfig, bool, bool) {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (config, run_suite, run_ramp) = parse_cli_args();
 
-    println!("\x1b[1;36m========================================================================\x1b[0m");
-    println!("\x1b[1;36m             DAIANA - Real-Time WebSocket Server Benchmark              \x1b[0m");
-    println!("\x1b[1;36m========================================================================\x1b[0m\n");
+    println!(
+        "\x1b[1;36m========================================================================\x1b[0m"
+    );
+    println!(
+        "\x1b[1;36m             DAIANA - Real-Time WebSocket Server Benchmark              \x1b[0m"
+    );
+    println!(
+        "\x1b[1;36m========================================================================\x1b[0m\n"
+    );
 
     let http_base = format!("http://{}:{}", config.host, config.port);
     let mut _server_handle = None;
@@ -895,7 +1011,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Check if server is already running, or if we need to auto-spawn it
     let server_online = check_server_health(&http_base).await;
     if !server_online {
-        println!("ℹ️  No active Daiana server detected at {}. Auto-starting in-process server...", http_base);
+        println!(
+            "ℹ️  No active Daiana server detected at {}. Auto-starting in-process server...",
+            http_base
+        );
         let handle = start_in_process_server(
             &config.host,
             config.port,
@@ -904,12 +1023,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             65_536,
         )
         .await?;
-        println!("\x1b[32m✓\x1b[0m In-process Daiana server successfully initialized at {}\n", http_base);
+        println!(
+            "\x1b[32m✓\x1b[0m In-process Daiana server successfully initialized at {}\n",
+            http_base
+        );
         _server_handle = Some(handle);
     } else if config.spawn_server {
-        println!("⚠️  --spawn-server specified but server is already running on {}. Using existing server.", http_base);
+        println!(
+            "⚠️  --spawn-server specified but server is already running on {}. Using existing server.",
+            http_base
+        );
     } else {
-        println!("\x1b[32m✓\x1b[0m Connected to existing Daiana server at {}\n", http_base);
+        println!(
+            "\x1b[32m✓\x1b[0m Connected to existing Daiana server at {}\n",
+            http_base
+        );
     }
 
     if run_suite {
@@ -919,34 +1047,41 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         println!(
             "Running benchmark: {} rooms × {} clients = {} clients (Rate: {} pkt/s per client, Duration: {}s)...",
-            config.rooms, config.clients_per_room, config.rooms * config.clients_per_room, config.rate_per_client, config.duration_secs
+            config.rooms,
+            config.clients_per_room,
+            config.rooms * config.clients_per_room,
+            config.rate_per_client,
+            config.duration_secs
         );
         let res = run_benchmark("Custom Benchmark Run", &config).await?;
         print_result_card(&res);
 
         if config.json_output {
-            println!("{}", serde_json::to_string_pretty(&serde_json::json!({
-                "name": res.name,
-                "total_clients": res.total_clients,
-                "total_rooms": res.total_rooms,
-                "target_rate_per_client": res.target_rate_per_client,
-                "duration_secs": res.duration_secs,
-                "payload_size": res.payload_size,
-                "mode": res.mode,
-                "send_rate_pps": res.send_rate_pps,
-                "recv_rate_pps": res.recv_rate_pps,
-                "send_bandwidth_mbps": res.send_bandwidth_mbps,
-                "recv_bandwidth_mbps": res.recv_bandwidth_mbps,
-                "delivery_ratio_pct": res.delivery_ratio_pct,
-                "min_latency_us": res.min_latency_us,
-                "avg_latency_us": res.avg_latency_us,
-                "p50_latency_us": res.p50_latency_us,
-                "p90_latency_us": res.p90_latency_us,
-                "p95_latency_us": res.p95_latency_us,
-                "p99_latency_us": res.p99_latency_us,
-                "p999_latency_us": res.p999_latency_us,
-                "max_latency_us": res.max_latency_us,
-            }))?);
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&serde_json::json!({
+                    "name": res.name,
+                    "total_clients": res.total_clients,
+                    "total_rooms": res.total_rooms,
+                    "target_rate_per_client": res.target_rate_per_client,
+                    "duration_secs": res.duration_secs,
+                    "payload_size": res.payload_size,
+                    "mode": res.mode,
+                    "send_rate_pps": res.send_rate_pps,
+                    "recv_rate_pps": res.recv_rate_pps,
+                    "send_bandwidth_mbps": res.send_bandwidth_mbps,
+                    "recv_bandwidth_mbps": res.recv_bandwidth_mbps,
+                    "delivery_ratio_pct": res.delivery_ratio_pct,
+                    "min_latency_us": res.min_latency_us,
+                    "avg_latency_us": res.avg_latency_us,
+                    "p50_latency_us": res.p50_latency_us,
+                    "p90_latency_us": res.p90_latency_us,
+                    "p95_latency_us": res.p95_latency_us,
+                    "p99_latency_us": res.p99_latency_us,
+                    "p999_latency_us": res.p999_latency_us,
+                    "max_latency_us": res.max_latency_us,
+                }))?
+            );
         }
     }
 

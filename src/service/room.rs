@@ -90,17 +90,24 @@ async fn connect_ws(
 
             packet_count += 1;
             if max_packets_per_sec > 0 && packet_count > max_packets_per_sec {
-                warn!(
-                    "Client {} exceeded rate limit ({} pkt/s > {}). Dropping packet.",
-                    client_uuid, packet_count, max_packets_per_sec
-                );
+                if packet_count == max_packets_per_sec + 1 {
+                    warn!(
+                        "Client {} exceeded rate limit ({} pkt/s > {}). Dropping packets.",
+                        client_uuid, packet_count, max_packets_per_sec
+                    );
+                } else {
+                    debug!(
+                        "Client {} exceeded rate limit ({} pkt/s > {}). Dropping packet.",
+                        client_uuid, packet_count, max_packets_per_sec
+                    );
+                }
                 continue;
             }
 
             match msg {
                 Ok(AggregatedMessage::Binary(msg)) => {
                     if max_packet_size_bytes > 0 && msg.len() > max_packet_size_bytes {
-                        warn!(
+                        debug!(
                             "Client {} sent oversized packet ({} bytes > {}). Dropping packet.",
                             client_uuid,
                             msg.len(),

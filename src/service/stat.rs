@@ -9,18 +9,12 @@ async fn index(data: Data<AppState>) -> impl Responder {
     let mut active_rooms: u32 = 0;
     let mut active_clients: u32 = 0;
 
-    {
-        channel_manager
-            .channels
-            .lock()
-            .expect("Unable to lock channel")
-            .iter()
-            .for_each(|(_, channel)| {
-                if !channel.clients.is_empty() {
-                    active_rooms += 1;
-                    active_clients += channel.clients.len() as u32;
-                }
-            });
+    for entry in channel_manager.channels.iter() {
+        let channel = entry.value();
+        if !channel.clients.is_empty() {
+            active_rooms += 1;
+            active_clients += channel.clients.len() as u32;
+        }
     }
 
     HttpResponse::Ok().json(json!({

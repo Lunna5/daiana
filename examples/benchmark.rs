@@ -156,7 +156,7 @@ pub async fn start_in_process_server(
     use daiana::{AppState, service};
 
     let channel_manager = ChannelManager {
-        channels: std::sync::Mutex::new(std::collections::HashMap::new()),
+        channels: dashmap::DashMap::new(),
         max_clients_on_room,
     };
 

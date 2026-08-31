@@ -2,8 +2,7 @@
 
 use crate::channel::ChannelManager;
 use crate::packet::out::WsPacket;
-use futures_util::future::join_all;
-use log::warn;
+use log::{debug, warn};
 use uuid::Uuid;
 
 /// Removes a client from the room and broadcasts a [`WsPacket::ClientDisconnected`] event to remaining peers.
@@ -80,7 +79,7 @@ pub async fn sync_existing_clients(
     }
 }
 
-/// Broadcasts a [`WsPacket`] concurrently to all clients in a room, optionally excluding one client.
+/// Broadcasts a [`WsPacket`] to all clients in a room, optionally excluding one client.
 ///
 /// Any clients whose connection fails during transmission will be cleanly disconnected and their
 /// departure broadcast to the room.
@@ -97,31 +96,20 @@ pub async fn broadcast_to_room(
         Err(_) => return,
     };
 
-    let mut send_tasks = Vec::new();
+    let mut failed_clients = Vec::new();
 
-    for client in clients {
+    for mut client in clients {
         if Some(client.id) == exclude_client {
             continue;
         }
 
-        let bytes = bytes_to_send.clone();
-        let mut session = client.session;
-        let client_id = client.id;
-
-        let task = async move {
-            if let Err(e) = session.binary(bytes).await {
-                warn!("Failed to send to {}: {}", client_id, e);
-                return Some(client_id);
-            }
-            None
-        };
-
-        send_tasks.push(task);
+        if let Err(e) = client.session.binary(bytes_to_send.clone()).await {
+            debug!("Failed to send to {}: {}", client.id, e);
+            failed_clients.push(client.id);
+        }
     }
 
-    let failed_clients = join_all(send_tasks).await;
-
-    for failed_id in failed_clients.into_iter().flatten() {
+    for failed_id in failed_clients {
         Box::pin(disconnect_and_broadcast(
             channel_manager,
             room_id,
@@ -143,7 +131,7 @@ pub async fn send_to_client(
     if let Ok(Some(mut client)) = channel_manager.get_client(room_id, target_client_id)
         && let Err(e) = client.session.binary(bytes).await
     {
-        warn!(
+        debug!(
             "Failed to send direct message to {}: {}",
             target_client_id, e
         );
@@ -184,7 +172,7 @@ pub async fn kick_client(
     disconnect_and_broadcast(channel_manager, room_id, client_id).await;
 }
 
-/// Multicasts a [`WsPacket`] concurrently to a specified subset of client UUIDs in the room.
+/// Multicasts a [`WsPacket`] to a specified subset of client UUIDs in the room.
 pub async fn multicast_to_clients(
     channel_manager: &ChannelManager,
     room_id: Uuid,
@@ -202,29 +190,18 @@ pub async fn multicast_to_clients(
         Err(_) => return,
     };
 
-    let mut send_tasks = Vec::new();
+    let mut failed_clients = Vec::new();
 
-    for client in clients {
+    for mut client in clients {
         if target_ids.contains(&client.id) {
-            let bytes = bytes_to_send.clone();
-            let mut session = client.session;
-            let client_id = client.id;
-
-            let task = async move {
-                if let Err(e) = session.binary(bytes).await {
-                    log::warn!("Failed to multicast to {}: {}", client_id, e);
-                    return Some(client_id);
-                }
-                None
-            };
-
-            send_tasks.push(task);
+            if let Err(e) = client.session.binary(bytes_to_send.clone()).await {
+                debug!("Failed to multicast to {}: {}", client.id, e);
+                failed_clients.push(client.id);
+            }
         }
     }
 
-    let failed_clients = join_all(send_tasks).await;
-
-    for failed_id in failed_clients.into_iter().flatten() {
+    for failed_id in failed_clients {
         Box::pin(disconnect_and_broadcast(
             channel_manager,
             room_id,

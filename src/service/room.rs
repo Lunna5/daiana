@@ -2,6 +2,7 @@
 
 use crate::channel::Client;
 use crate::packet::{WsInPacket, WsPacket};
+use crate::util::TokenBucket;
 use crate::util::error::DaianaError;
 use crate::{AppState, packet};
 use actix_web::web::Data;
@@ -10,7 +11,6 @@ use actix_ws::AggregatedMessage;
 use futures_util::StreamExt as _;
 use log::{debug, error, warn};
 use serde_json::json;
-use std::time::Instant;
 use uuid::Uuid;
 
 /// Creates a new room via `POST /room/` and returns its generated UUID in JSON format.
@@ -79,33 +79,46 @@ async fn connect_ws(
     let max_packet_size_bytes = state.max_packet_size_bytes;
 
     rt::spawn(async move {
-        let mut packet_count = 0u32;
-        let mut last_reset = Instant::now();
+        let mut rate_limiter = TokenBucket::new(max_packets_per_sec, max_packets_per_sec);
+        let max_consecutive_abuse = if max_packets_per_sec > 0 {
+            max_packets_per_sec.saturating_mul(10).max(200)
+        } else {
+            u32::MAX
+        };
 
         while let Some(msg) = stream.next().await {
-            if last_reset.elapsed().as_secs() >= 1 {
-                packet_count = 0;
-                last_reset = Instant::now();
-            }
-
-            packet_count += 1;
-            if max_packets_per_sec > 0 && packet_count > max_packets_per_sec {
-                if packet_count == max_packets_per_sec + 1 {
-                    warn!(
-                        "Client {} exceeded rate limit ({} pkt/s > {}). Dropping packets.",
-                        client_uuid, packet_count, max_packets_per_sec
-                    );
-                } else {
-                    debug!(
-                        "Client {} exceeded rate limit ({} pkt/s > {}). Dropping packet.",
-                        client_uuid, packet_count, max_packets_per_sec
-                    );
-                }
-                continue;
-            }
-
             match msg {
                 Ok(AggregatedMessage::Binary(msg)) => {
+                    if !rate_limiter.try_consume() {
+                        let violations = rate_limiter.consecutive_violations();
+                        if violations == 1 {
+                            warn!(
+                                "Client {} exceeded rate limit ({} pkt/s). Throttling packets.",
+                                client_uuid, max_packets_per_sec
+                            );
+                        } else {
+                            debug!(
+                                "Client {} exceeded rate limit (violation #{})",
+                                client_uuid, violations
+                            );
+                        }
+
+                        if violations >= max_consecutive_abuse {
+                            warn!(
+                                "Client {} disconnected due to excessive rate limit abuse ({} consecutive drops)",
+                                client_uuid, violations
+                            );
+                            let _ = session
+                                .close(Some(actix_ws::CloseReason {
+                                    code: actix_ws::CloseCode::Policy,
+                                    description: Some("Rate limit exceeded".to_string()),
+                                }))
+                                .await;
+                            break;
+                        }
+                        continue;
+                    }
+
                     if max_packet_size_bytes > 0 && msg.len() > max_packet_size_bytes {
                         debug!(
                             "Client {} sent oversized packet ({} bytes > {}). Dropping packet.",

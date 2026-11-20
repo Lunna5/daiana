@@ -10,7 +10,10 @@ import io.netty.handler.timeout.IdleState;
 import io.netty.handler.timeout.IdleStateEvent;
 import org.jetbrains.annotations.NotNull;
 
+import java.nio.channels.ClosedChannelException;
 import java.util.List;
+import java.util.Queue;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 import static java.util.Objects.requireNonNull;
@@ -23,16 +26,21 @@ import static java.util.Objects.requireNonNull;
 public final class DianaClientHandler extends SimpleChannelInboundHandler<WsInPacket> {
     private final List<DaianaListener> listeners;
     private final CompletableFuture<Void> handshakeFuture;
+    private final Queue<CompletableFuture<UUID>> pendingTempCodeRequests;
 
     /**
      * Constructs a new {@link DianaClientHandler}.
      *
-     * @param listeners       the list of listeners to notify
-     * @param handshakeFuture the future to complete on handshake completion
+     * @param listeners               the list of listeners to notify
+     * @param handshakeFuture         the future to complete on handshake completion
+     * @param pendingTempCodeRequests queue of pending futures awaiting a {@link TempCodeResponse}
      */
-    public DianaClientHandler(@NotNull List<DaianaListener> listeners, @NotNull CompletableFuture<Void> handshakeFuture) {
+    public DianaClientHandler(@NotNull List<DaianaListener> listeners,
+                              @NotNull CompletableFuture<Void> handshakeFuture,
+                              @NotNull Queue<CompletableFuture<UUID>> pendingTempCodeRequests) {
         this.listeners = requireNonNull(listeners, "listeners cannot be null");
         this.handshakeFuture = requireNonNull(handshakeFuture, "handshakeFuture cannot be null");
+        this.pendingTempCodeRequests = requireNonNull(pendingTempCodeRequests, "pendingTempCodeRequests cannot be null");
     }
 
     @Override
@@ -84,11 +92,26 @@ public final class DianaClientHandler extends SimpleChannelInboundHandler<WsInPa
                     listener.onServerInfo(message);
                 }
             }
+
+            case TempCodeResponse(var code) -> {
+                CompletableFuture<UUID> pending = pendingTempCodeRequests.poll();
+                if (pending != null) {
+                    pending.complete(code);
+                }
+                for (DaianaListener listener : listeners) {
+                    listener.onTempCodeResponse(code);
+                }
+            }
         }
     }
 
     @Override
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+        CompletableFuture<UUID> pending;
+        while ((pending = pendingTempCodeRequests.poll()) != null) {
+            pending.completeExceptionally(new ClosedChannelException());
+        }
+
         for (DaianaListener listener : listeners) {
             listener.onDisconnected();
         }

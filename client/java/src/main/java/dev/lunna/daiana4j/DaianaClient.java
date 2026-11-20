@@ -4,6 +4,7 @@ import dev.lunna.daiana4j.connection.DaianaChannelInitializer;
 import dev.lunna.daiana4j.listener.DaianaListener;
 import dev.lunna.daiana4j.listener.DefaultDaianaListener;
 import dev.lunna.daiana4j.protocol.out.BroadcastPacket;
+import dev.lunna.daiana4j.protocol.out.CreateTempCodePacket;
 import dev.lunna.daiana4j.protocol.out.MulticastPacket;
 import dev.lunna.daiana4j.protocol.out.UnicastPacket;
 import dev.lunna.daiana4j.protocol.out.WsOutPacket;
@@ -24,8 +25,11 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.List;
+import java.util.Queue;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -64,6 +68,7 @@ public final class DaianaClient implements AutoCloseable {
     private final List<DaianaListener> listeners;
     private final DaianaClientOptions options;
     private final RoomManager roomManager = new RoomManager();
+    private final Queue<CompletableFuture<UUID>> pendingTempCodeRequests = new ConcurrentLinkedQueue<>();
 
     private final EventLoopGroup group;
     private final boolean managesGroup;
@@ -151,7 +156,7 @@ public final class DaianaClient implements AutoCloseable {
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, (int) options.getConnectionTimeout().toMillis())
                 .option(ChannelOption.SO_KEEPALIVE, true)
                 .option(ChannelOption.TCP_NODELAY, true)
-                .handler(new DaianaChannelInitializer(uri, listeners, handshakeFuture, options));
+                .handler(new DaianaChannelInitializer(uri, listeners, handshakeFuture, options, pendingTempCodeRequests));
 
         bootstrap.connect(host, port).addListener((ChannelFutureListener) future -> {
             if (future.isSuccess()) {
@@ -217,6 +222,39 @@ public final class DaianaClient implements AutoCloseable {
         requireNonNull(clientIds, "clientIds cannot be null");
         requireNonNull(payload, "payload cannot be null");
         return sendPacket(new MulticastPacket(clientIds, payload));
+    }
+
+    /**
+     * Requests the server to generate a temporary room join code.
+     * <p>
+     * In addition to resolving the returned {@link CompletableFuture} with the generated temporary {@link UUID},
+     * {@link DaianaListener#onTempCodeResponse(UUID)} will also be invoked when the server responds.
+     *
+     * @return a {@link CompletableFuture} resolving to the generated temporary room {@link UUID}
+     */
+    public CompletableFuture<UUID> createTempCode() {
+        if (!isConnected()) {
+            return CompletableFuture.failedFuture(new IllegalStateException("Client is not connected"));
+        }
+
+        CompletableFuture<UUID> responseFuture = new CompletableFuture<UUID>()
+                .orTimeout(options.getConnectionTimeout().toMillis(), TimeUnit.MILLISECONDS);
+        pendingTempCodeRequests.add(responseFuture);
+
+        responseFuture.whenComplete((uuid, error) -> {
+            if (error != null) {
+                pendingTempCodeRequests.remove(responseFuture);
+            }
+        });
+
+        channel.writeAndFlush(new CreateTempCodePacket()).addListener(future -> {
+            if (!future.isSuccess()) {
+                pendingTempCodeRequests.remove(responseFuture);
+                responseFuture.completeExceptionally(future.cause());
+            }
+        });
+
+        return responseFuture;
     }
 
     /**

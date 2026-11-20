@@ -20,6 +20,8 @@ import org.jetbrains.annotations.NotNull;
 import javax.net.ssl.SSLException;
 import java.net.URI;
 import java.util.List;
+import java.util.Queue;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 import static java.util.Objects.requireNonNull;
@@ -32,29 +34,34 @@ public final class DaianaChannelInitializer extends ChannelInitializer<SocketCha
     private final List<DaianaListener> listeners;
     private final CompletableFuture<Void> handshakeFuture;
     private final DaianaClientOptions options;
+    private final Queue<CompletableFuture<UUID>> pendingTempCodeRequests;
 
     /**
      * Constructs a new {@link DaianaChannelInitializer}.
      *
-     * @param uri             the target WebSocket URI
-     * @param listeners       the list of listeners to receive event notifications
-     * @param handshakeFuture the future to complete when the WebSocket handshake succeeds
-     * @param options         the client configuration options
+     * @param uri                     the target WebSocket URI
+     * @param listeners               the list of listeners to receive event notifications
+     * @param handshakeFuture         the future to complete when the WebSocket handshake succeeds
+     * @param options                 the client configuration options
+     * @param pendingTempCodeRequests queue of pending futures awaiting a temp code response
      */
     public DaianaChannelInitializer(@NotNull final URI uri,
                                     @NotNull final List<DaianaListener> listeners,
                                     @NotNull final CompletableFuture<Void> handshakeFuture,
-                                    @NotNull final DaianaClientOptions options
+                                    @NotNull final DaianaClientOptions options,
+                                    @NotNull final Queue<CompletableFuture<UUID>> pendingTempCodeRequests
     ) {
         requireNonNull(uri, "uri cannot be null");
         requireNonNull(listeners, "listeners cannot be null");
         requireNonNull(handshakeFuture, "handshakeFuture cannot be null");
         requireNonNull(options, "options cannot be null");
+        requireNonNull(pendingTempCodeRequests, "pendingTempCodeRequests cannot be null");
 
         this.uri = uri;
         this.listeners = listeners;
         this.handshakeFuture = handshakeFuture;
         this.options = options;
+        this.pendingTempCodeRequests = pendingTempCodeRequests;
     }
 
     @Override
@@ -101,6 +108,6 @@ public final class DaianaChannelInitializer extends ChannelInitializer<SocketCha
         pipeline.addLast("packet-decoder", new PacketDecoder());
 
         // 6. Daiana event handler
-        pipeline.addLast("daiana-handler", new DianaClientHandler(listeners, handshakeFuture));
+        pipeline.addLast("daiana-handler", new DianaClientHandler(listeners, handshakeFuture, pendingTempCodeRequests));
     }
 }

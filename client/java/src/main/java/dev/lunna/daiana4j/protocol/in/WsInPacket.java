@@ -10,7 +10,7 @@ import static java.util.Objects.requireNonNull;
 /**
  * Sealed interface representing an incoming packet received from the Daiana WebSocket server (Server -> Client).
  */
-public sealed interface WsInPacket permits ClientConnected, ClientDisconnected, Message, ServerInfo {
+public sealed interface WsInPacket permits ClientConnected, ClientDisconnected, Message, ServerInfo, TempCodeResponse {
 
     /**
      * Returns the server-to-client opcode of this packet.
@@ -42,6 +42,7 @@ public sealed interface WsInPacket permits ClientConnected, ClientDisconnected, 
             case CLIENT_DISCONNECTED -> ClientDisconnected.fromByteBuf(buf);
             case MESSAGE -> Message.fromByteBuf(buf);
             case SERVER_INFO -> ServerInfo.fromByteBuf(buf);
+            case TEMP_CODE_RESPONSE -> TempCodeResponse.fromByteBuf(buf);
         };
     }
 }

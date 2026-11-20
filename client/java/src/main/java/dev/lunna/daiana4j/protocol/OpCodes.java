@@ -20,7 +20,10 @@ public final class OpCodes {
         MESSAGE((byte) 0x02),
 
         /** Opcode 0x03: Server system/info message. Payload contains UTF-8 text bytes. */
-        SERVER_INFO((byte) 0x03);
+        SERVER_INFO((byte) 0x03),
+
+        /** Opcode 0x04: Temporary room join code response. Payload contains the 16-byte temporary UUID. */
+        TEMP_CODE_RESPONSE((byte) 0x04);
 
         private final byte code;
 
@@ -65,7 +68,10 @@ public final class OpCodes {
         MULTICAST((byte) 0x01),
 
         /** Opcode 0x02: Broadcast message to all peers in the room. Format: [0x02][Payload]. */
-        BROADCAST((byte) 0x02);
+        BROADCAST((byte) 0x02),
+
+        /** Opcode 0x03: Request the server to generate a temporary room join code. Format: [0x03]. */
+        CREATE_TEMP_CODE((byte) 0x03);
 
         private final byte code;
 

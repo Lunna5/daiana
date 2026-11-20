@@ -7,7 +7,7 @@ import org.jetbrains.annotations.NotNull;
 /**
  * Sealed interface representing an outbound packet to be sent to the Daiana WebSocket server (Client -> Server).
  */
-public sealed interface WsOutPacket permits BroadcastPacket, MulticastPacket, UnicastPacket {
+public sealed interface WsOutPacket permits BroadcastPacket, CreateTempCodePacket, MulticastPacket, UnicastPacket {
 
     /**
      * Returns the client-to-server opcode of this packet.

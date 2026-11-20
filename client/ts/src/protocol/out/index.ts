@@ -34,9 +34,17 @@ export interface BroadcastPacket {
 }
 
 /**
+ * Request packet asking the server to generate a temporary room join code.
+ */
+export interface CreateTempCodePacket {
+  readonly type: 'create_temp_code';
+}
+
+/**
  * Discriminated union of all outbound packets sent to the Daiana server.
  */
 export type WsOutPacket =
   | UnicastPacket
   | MulticastPacket
-  | BroadcastPacket;
+  | BroadcastPacket
+  | CreateTempCodePacket;

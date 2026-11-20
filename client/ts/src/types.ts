@@ -55,6 +55,9 @@ export interface DaianaEvents {
   /** Dispatched when a system or admin notice is received from the server. */
   server_info: (message: string) => void;
 
+  /** Dispatched when the server responds with a generated temporary room join code. */
+  temp_code_response: (code: string) => void;
+
   /** Dispatched when a WebSocket error or decode error occurs. */
   error: (error: Error) => void;
 }

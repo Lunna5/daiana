@@ -63,6 +63,14 @@ export function encodeBroadcast(payload: Uint8Array): Uint8Array {
 }
 
 /**
+ * Encodes a create temporary room code request packet to a binary Uint8Array.
+ * Format: `[0x03]`
+ */
+export function encodeCreateTempCode(): Uint8Array {
+  return new Uint8Array([ClientOpCode.CreateTempCode]);
+}
+
+/**
  * Encodes any {@link WsOutPacket} into a binary Uint8Array ready to be sent over WebSocket.
  *
  * @param packet The outbound packet to encode
@@ -75,5 +83,7 @@ export function encodePacket(packet: WsOutPacket): Uint8Array {
       return encodeMulticast(packet.targetIds, packet.payload);
     case 'broadcast':
       return encodeBroadcast(packet.payload);
+    case 'create_temp_code':
+      return encodeCreateTempCode();
   }
 }

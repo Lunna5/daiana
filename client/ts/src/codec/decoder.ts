@@ -62,6 +62,16 @@ export function decodePacket(buffer: ArrayBuffer | Uint8Array): WsInPacket {
       };
     }
 
+    case ServerOpCode.TempCodeResponse: {
+      if (bytes.length < 17) {
+        throw new Error(`Incomplete TempCodeResponse packet: expected at least 17 bytes, got ${bytes.length}`);
+      }
+      return {
+        type: 'temp_code_response',
+        code: bytesToUuid(bytes, 1),
+      };
+    }
+
     default:
       throw new Error(`Invalid or unknown server opcode: 0x${opcode.toString(16).padStart(2, '0')}`);
   }

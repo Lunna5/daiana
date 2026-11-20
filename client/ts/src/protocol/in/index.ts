@@ -41,10 +41,20 @@ export interface ServerInfoPacket {
 }
 
 /**
+ * Response from the server containing a generated temporary room join code.
+ */
+export interface TempCodeResponsePacket {
+  readonly type: 'temp_code_response';
+  /** The generated temporary room UUID. */
+  readonly code: string;
+}
+
+/**
  * Discriminated union of all possible inbound packets from the Daiana server.
  */
 export type WsInPacket =
   | ClientConnectedPacket
   | ClientDisconnectedPacket
   | MessagePacket
-  | ServerInfoPacket;
+  | ServerInfoPacket
+  | TempCodeResponsePacket;

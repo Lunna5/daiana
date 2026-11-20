@@ -14,6 +14,8 @@ export const ServerOpCode = {
   Message: 0x02,
   /** System / admin notice from the server. `[0x03][UTF-8 String]` */
   ServerInfo: 0x03,
+  /** Temporary room join code response from the server. `[0x04][16B UUID]` */
+  TempCodeResponse: 0x04,
 } as const;
 
 export type ServerOpCode = (typeof ServerOpCode)[keyof typeof ServerOpCode];
@@ -28,6 +30,8 @@ export const ClientOpCode = {
   Multicast: 0x01,
   /** Broadcast message to all other peers in the room. `[0x02][Payload Bytes]` */
   Broadcast: 0x02,
+  /** Request the server to generate a temporary room join code. `[0x03]` */
+  CreateTempCode: 0x03,
 } as const;
 
 export type ClientOpCode = (typeof ClientOpCode)[keyof typeof ClientOpCode];

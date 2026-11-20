@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { decodePacket } from '../src/codec/decoder';
 import {
   encodeBroadcast,
+  encodeCreateTempCode,
   encodeMulticast,
   encodePacket,
   encodeUnicast,
@@ -44,10 +45,21 @@ describe('Codec Encoder & Decoder', () => {
       expect(bytes.length).toBe(1 + payload.length);
     });
 
+    it('should encode CreateTempCode packet correctly', () => {
+      const bytes = encodeCreateTempCode();
+
+      expect(bytes[0]).toBe(ClientOpCode.CreateTempCode);
+      expect(bytes.length).toBe(1);
+    });
+
     it('should encode generic WsOutPacket with encodePacket', () => {
       const payload = encoder.encode('test');
       const bytes = encodePacket({ type: 'broadcast', payload });
       expect(bytes[0]).toBe(ClientOpCode.Broadcast);
+
+      const tempCodeBytes = encodePacket({ type: 'create_temp_code' });
+      expect(tempCodeBytes[0]).toBe(ClientOpCode.CreateTempCode);
+      expect(tempCodeBytes.length).toBe(1);
     });
   });
 
@@ -104,6 +116,24 @@ describe('Codec Encoder & Decoder', () => {
         type: 'server_info',
         message: infoText,
       });
+    });
+
+    it('should decode TempCodeResponse packet', () => {
+      const buffer = new Uint8Array(17);
+      buffer[0] = ServerOpCode.TempCodeResponse;
+      buffer.set(uuidToBytes(sampleUuid1), 1);
+
+      const packet = decodePacket(buffer);
+      expect(packet).toEqual({
+        type: 'temp_code_response',
+        code: sampleUuid1,
+      });
+    });
+
+    it('should throw on incomplete TempCodeResponse packet', () => {
+      const buffer = new Uint8Array(10);
+      buffer[0] = ServerOpCode.TempCodeResponse;
+      expect(() => decodePacket(buffer)).toThrow('Incomplete TempCodeResponse packet');
     });
 
     it('should throw on unknown opcode', () => {

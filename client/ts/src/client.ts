@@ -1,5 +1,5 @@
 import { decodePacket } from './codec/decoder';
-import { encodeBroadcast, encodeMulticast, encodeUnicast } from './codec/encoder';
+import { encodeBroadcast, encodeCreateTempCode, encodeMulticast, encodeUnicast } from './codec/encoder';
 import { createRoom, deriveWebSocketUrl } from './room/api';
 import { RoomManager } from './room/roomManager';
 import type { DaianaClientOptions, DaianaEvents, DaianaEventType } from './types';
@@ -24,6 +24,11 @@ export class DaianaClient {
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private isManuallyClosed: boolean = false;
   private reconnectAttempts: number = 0;
+  private readonly pendingTempCodeRequests: Array<{
+    resolve: (code: string) => void;
+    reject: (error: Error) => void;
+    timer: ReturnType<typeof setTimeout>;
+  }> = [];
 
   /**
    * Constructs a new {@link DaianaClient} instance.
@@ -137,6 +142,7 @@ export class DaianaClient {
         this.ws.onclose = (event) => {
           this.stopHeartbeat();
           this.roomManager.clear();
+          this.rejectPendingTempCodeRequests(new Error(`WebSocket closed before receiving temp code (code: ${event.code})`));
           this.emit('disconnected', event);
 
           if (!isResolved) {
@@ -169,6 +175,7 @@ export class DaianaClient {
     this.isManuallyClosed = true;
     this.stopHeartbeat();
     this.roomManager.clear();
+    this.rejectPendingTempCodeRequests(new Error('WebSocket disconnected before receiving temp code'));
 
     if (this.ws) {
       this.ws.close();
@@ -233,6 +240,43 @@ export class DaianaClient {
   }
 
   /**
+   * Requests the server to generate a temporary room join code.
+   *
+   * In addition to resolving the returned Promise with the generated temporary room UUID,
+   * the `'temp_code_response'` event will also be emitted when the server responds.
+   *
+   * @returns A Promise resolving to the generated temporary room UUID
+   */
+  public createTempCode(): Promise<string> {
+    if (!this.isConnected() || !this.ws) {
+      return Promise.reject(new Error('Cannot send packet: WebSocket is not connected'));
+    }
+
+    return new Promise<string>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        const index = this.pendingTempCodeRequests.findIndex((item) => item.resolve === resolve);
+        if (index !== -1) {
+          this.pendingTempCodeRequests.splice(index, 1);
+        }
+        reject(new Error(`Timed out waiting for temp code response after ${this.options.connectionTimeout}ms`));
+      }, this.options.connectionTimeout);
+
+      this.pendingTempCodeRequests.push({ resolve, reject, timer });
+
+      try {
+        this.sendRaw(encodeCreateTempCode());
+      } catch (err) {
+        clearTimeout(timer);
+        const index = this.pendingTempCodeRequests.findIndex((item) => item.resolve === resolve);
+        if (index !== -1) {
+          this.pendingTempCodeRequests.splice(index, 1);
+        }
+        reject(err instanceof Error ? err : new Error(String(err)));
+      }
+    });
+  }
+
+  /**
    * Sends a raw binary packet over the WebSocket.
    */
   private sendRaw(data: Uint8Array): void {
@@ -240,6 +284,14 @@ export class DaianaClient {
       throw new Error('Cannot send packet: WebSocket is not connected');
     }
     this.ws.send(data as unknown as BufferSource);
+  }
+
+  private rejectPendingTempCodeRequests(error: Error): void {
+    while (this.pendingTempCodeRequests.length > 0) {
+      const pending = this.pendingTempCodeRequests.shift()!;
+      clearTimeout(pending.timer);
+      pending.reject(error);
+    }
   }
 
   private handleIncomingMessage(data: unknown): void {
@@ -265,6 +317,16 @@ export class DaianaClient {
           case 'server_info':
             this.emit('server_info', packet.message);
             break;
+
+          case 'temp_code_response': {
+            const pending = this.pendingTempCodeRequests.shift();
+            if (pending) {
+              clearTimeout(pending.timer);
+              pending.resolve(packet.code);
+            }
+            this.emit('temp_code_response', packet.code);
+            break;
+          }
         }
       }
     } catch (err) {

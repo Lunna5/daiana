@@ -10,6 +10,7 @@ export { createRoom, deriveWebSocketUrl } from './room/api';
 export { decodePacket } from './codec/decoder';
 export {
   encodeBroadcast,
+  encodeCreateTempCode,
   encodeMulticast,
   encodePacket,
   encodeUnicast,
@@ -20,10 +21,12 @@ export type {
   ClientDisconnectedPacket,
   MessagePacket,
   ServerInfoPacket,
+  TempCodeResponsePacket,
   WsInPacket,
 } from './protocol/in';
 export type {
   BroadcastPacket,
+  CreateTempCodePacket,
   MulticastPacket,
   UnicastPacket,
   WsOutPacket,

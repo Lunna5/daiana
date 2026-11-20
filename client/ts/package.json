@@ -41,9 +41,9 @@
   "author": "Lunna Martín González <git@lunna.dev>",
   "license": "AGPL-3.0-only",
   "devDependencies": {
-    "tsup": "^8.4.0",
-    "typescript": "^5.8.2",
-    "vitest": "^3.0.8"
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.7"
   },
   "packageManager": "pnpm@11.24.0"
 }

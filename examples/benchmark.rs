@@ -157,6 +157,7 @@ pub async fn start_in_process_server(
 
     let channel_manager = ChannelManager {
         channels: dashmap::DashMap::new(),
+        temp_ids: dashmap::DashMap::new(),
         max_clients_on_room,
     };
 

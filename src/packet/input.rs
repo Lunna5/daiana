@@ -7,6 +7,7 @@ use uuid::Uuid;
 const IN_OP_UNICAST: u8 = 0x0;
 const IN_OP_MULTICAST: u8 = 0x1;
 const IN_OP_BROADCAST: u8 = 0x2;
+const IN_CREATE_TEMP_CODE: u8 = 0x3;
 
 /// Inbound binary packet parsed from a client connection.
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -33,6 +34,9 @@ pub enum WsInPacket {
         /// The raw message payload bytes.
         payload: Bytes,
     },
+    /// Request the server to generate a room temp join code
+    /// Format: `[0x03]`
+    CreateTempCode {},
 }
 
 impl WsInPacket {
@@ -65,6 +69,7 @@ impl WsInPacket {
                 buf.put_slice(payload);
                 buf.freeze()
             }
+            WsInPacket::CreateTempCode {} => BytesMut::with_capacity(1).freeze(),
         }
     }
 
@@ -119,6 +124,8 @@ impl WsInPacket {
             }
 
             IN_OP_BROADCAST => Ok(WsInPacket::Broadcast { payload: data }),
+
+            IN_CREATE_TEMP_CODE => Ok(WsInPacket::CreateTempCode {}),
 
             _ => Err(ParseError::InvalidOpCode(opcode)),
         }

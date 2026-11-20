@@ -178,6 +178,20 @@ async fn connect_ws(
                             .await;
                         }
 
+                        Ok(WsInPacket::CreateTempCode {}) => {
+                            if let Ok(uuid) = state.channel_manager.create_temp_uuid(room_uuid) {
+                                let out_packet = WsPacket::TempCodeResponse { code: uuid };
+
+                                Box::pin(packet::send_to_client(
+                                    &state.channel_manager,
+                                    room_uuid,
+                                    client_uuid,
+                                    &out_packet,
+                                ))
+                                .await;
+                            }
+                        }
+
                         Err(e) => {
                             error!("Error while parsing client packet {}: {:?}", client_uuid, e);
                         }

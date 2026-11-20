@@ -11,6 +11,8 @@ use uuid::Uuid;
 pub struct ChannelManager {
     /// Sharded concurrent map of room UUIDs to [`Channel`] instances.
     pub channels: DashMap<Uuid, Channel>,
+    /// Shared concurrent map of temp Uuid mapped to the real Uuid
+    pub temp_ids: DashMap<Uuid, Uuid>,
     /// Maximum number of concurrent clients allowed per room.
     pub max_clients_on_room: u16,
 }
@@ -26,6 +28,7 @@ impl ChannelManager {
     pub fn new() -> Self {
         Self {
             channels: DashMap::new(),
+            temp_ids: DashMap::new(),
             max_clients_on_room: std::env::var("MAX_CLIENTS_ON_CHANNEL")
                 .ok()
                 .and_then(|s| s.parse().ok())
@@ -68,12 +71,32 @@ impl ChannelManager {
         }
     }
 
+    pub fn create_temp_uuid(&self, id: Uuid) -> Result<Uuid, DaianaError> {
+        if self.channels.contains_key(&id) {
+            let uuid = Uuid::new_v4();
+            self.temp_ids.insert(uuid, id);
+            Ok(uuid)
+        } else {
+            Err(DaianaError::InvalidRoomId)
+        }
+    }
+
     /// Adds a connected [`Client`] to the specified room.
     ///
     /// Returns [`DaianaError::MaximumClientsReached`] if the room is at capacity,
     /// or [`DaianaError::InvalidRoomId`] if the room does not exist.
     pub fn insert_client(&self, id: Uuid, client: Client) -> Result<(), DaianaError> {
-        if let Some(mut channel) = self.channels.get_mut(&id) {
+        let uuid = self
+            .temp_ids
+            .get(&id)
+            .map(|original| *original)
+            .unwrap_or(id);
+
+        if self.temp_ids.contains_key(&id) {
+            self.temp_ids.remove(&id);
+        }
+
+        if let Some(mut channel) = self.channels.get_mut(&uuid) {
             if channel.clients.len() >= self.max_clients_on_room as usize {
                 return Err(DaianaError::MaximumClientsReached);
             }

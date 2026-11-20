@@ -7,6 +7,7 @@ const OP_CONNECTED: u8 = 0x0;
 const OP_DISCONNECTED: u8 = 0x1;
 const OP_MESSAGE: u8 = 0x2;
 const OP_SERVER_INFO: u8 = 0x3;
+const OP_TEMP_CODE_RESPONSE: u8 = 0x4;
 
 /// Errors that can occur when parsing raw binary WebSocket frames into packets.
 #[derive(Debug, PartialEq, Eq)]
@@ -48,6 +49,9 @@ pub enum WsPacket {
         /// The text message.
         message: String,
     },
+    TempCodeResponse {
+        code: Uuid,
+    },
 }
 
 impl WsPacket {
@@ -78,6 +82,12 @@ impl WsPacket {
                 let mut buf = BytesMut::with_capacity(1 + msg_bytes.len());
                 buf.put_u8(OP_SERVER_INFO);
                 buf.put_slice(msg_bytes);
+                buf.freeze()
+            }
+            WsPacket::TempCodeResponse { code } => {
+                let mut buf = BytesMut::with_capacity(17);
+                buf.put_u8(OP_TEMP_CODE_RESPONSE);
+                buf.put_slice(code.as_bytes());
                 buf.freeze()
             }
         }
@@ -126,6 +136,13 @@ impl WsPacket {
             OP_SERVER_INFO => {
                 let text = String::from_utf8(data.to_vec()).map_err(|_| ParseError::InvalidUtf8)?;
                 Ok(WsPacket::ServerInfo { message: text })
+            }
+            OP_TEMP_CODE_RESPONSE => {
+                let mut uuid_bytes = [0u8; 16];
+                data.copy_to_slice(&mut uuid_bytes);
+                Ok(WsPacket::TempCodeResponse {
+                    code: Uuid::from_bytes(uuid_bytes),
+                })
             }
             _ => Err(ParseError::InvalidOpCode(opcode)),
         }

@@ -194,10 +194,11 @@ pub async fn multicast_to_clients(
 
     for mut client in clients {
         if target_ids.contains(&client.id)
-            && let Err(e) = client.session.binary(bytes_to_send.clone()).await {
-                debug!("Failed to multicast to {}: {}", client.id, e);
-                failed_clients.push(client.id);
-            }
+            && let Err(e) = client.session.binary(bytes_to_send.clone()).await
+        {
+            debug!("Failed to multicast to {}: {}", client.id, e);
+            failed_clients.push(client.id);
+        }
     }
 
     for failed_id in failed_clients {

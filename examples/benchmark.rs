@@ -9,10 +9,12 @@
 
 use bytes::Bytes;
 use daiana::packet::{WsInPacket, WsPacket};
+use daiana::util::error::DaianaError;
 use futures_util::{SinkExt, StreamExt};
 use reqwest::Client as HttpClient;
 use serde_json::Value;
 use std::env;
+use std::str::FromStr;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
@@ -29,19 +31,23 @@ pub enum RoutingMode {
 }
 
 impl RoutingMode {
-    pub fn from_str(s: &str) -> Self {
-        match s.to_lowercase().as_str() {
-            "unicast" | "uni" => RoutingMode::Unicast,
-            "multicast" | "multi" => RoutingMode::Multicast,
-            _ => RoutingMode::Broadcast,
-        }
-    }
-
     pub fn as_str(&self) -> &'static str {
         match self {
             RoutingMode::Broadcast => "Broadcast",
             RoutingMode::Unicast => "Unicast",
             RoutingMode::Multicast => "Multicast",
+        }
+    }
+}
+
+impl FromStr for RoutingMode {
+    type Err = DaianaError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "unicast" | "uni" => Ok(RoutingMode::Unicast),
+            "multicast" | "multi" => Ok(RoutingMode::Multicast),
+            _ => Ok(RoutingMode::Broadcast),
         }
     }
 }
@@ -953,7 +959,7 @@ fn parse_cli_args() -> (BenchmarkConfig, bool, bool) {
                 i += 1;
             }
             "--mode" if i + 1 < args.len() => {
-                config.mode = RoutingMode::from_str(&args[i + 1]);
+                config.mode = RoutingMode::from_str(&args[i + 1]).unwrap();
                 i += 1;
             }
             "--max-clients-server" if i + 1 < args.len() => {
